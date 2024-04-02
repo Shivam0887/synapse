@@ -3,14 +3,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { UserButton, currentUser } from "@clerk/nextjs";
 
-type Props = {};
-
-const Navbar = async (props: Props) => {
+const Navbar = async () => {
   const user = await currentUser();
 
   return (
     <header
-      className="fixed right-0 left-0 top-0 p-4 bg-black/40 z-[100]
+      className="fixed right-0 left-0 top-0 p-4 bg-black/40 z-[110]
     flex items-center justify-between border-b-[1px] border-neutral-900
     backdrop-blur-lg"
     >

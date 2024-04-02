@@ -4,6 +4,7 @@ import "./globals.css";
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/providers/theme-provider";
+import { dark } from "@clerk/themes";
 
 const font = DM_Sans({ subsets: ["latin"] });
 
@@ -18,13 +19,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider
+      appearance={{
+        baseTheme: dark,
+      }}
+      publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+    >
       <html lang="en" suppressHydrationWarning>
         <head />
         <body className={font.className}>
           <ThemeProvider
             attribute="class"
-            defaultTheme="system"
+            defaultTheme="dark"
             enableSystem
             disableTransitionOnChange
           >
