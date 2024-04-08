@@ -120,5 +120,10 @@ export const ConnectionsProvider = ({ children }: ConnectionWithChildProps) => {
 
 export const useNodeConnections = () => {
   const nodeConnection = useContext(ConnectionsContext);
+  if (!nodeConnection) {
+    throw new Error(
+      "connection context can only be used within connection provider"
+    );
+  }
   return { nodeConnection };
 };

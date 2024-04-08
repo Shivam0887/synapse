@@ -1,4 +1,4 @@
-import { models, model, Schema, InferSchemaType } from "mongoose";
+import { models, model, Schema, InferSchemaType, Types } from "mongoose";
 import { ConnectionsSchema } from "./connections-model";
 
 export const SlackSchema = new Schema({
@@ -11,7 +11,17 @@ export const SlackSchema = new Schema({
   teamName: { type: String, required: true },
   userId: { type: Schema.Types.ObjectId, ref: "User" },
   connections: [ConnectionsSchema],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-export type SlackType = InferSchemaType<typeof SlackSchema>;
+export type SlackType = InferSchemaType<typeof SlackSchema> & {
+  _id: Types.ObjectId;
+};
 export const Slack = models.Slack || model("Slack", SlackSchema);

@@ -1,4 +1,4 @@
-import { models, model, Schema, InferSchemaType } from "mongoose";
+import { models, model, Schema, InferSchemaType, Types } from "mongoose";
 
 export const LocalGoogleCredentialSchema = new Schema({
   userId: {
@@ -31,7 +31,9 @@ export const LocalGoogleCredentialSchema = new Schema({
 
 export type LocalGoogleCredentialType = InferSchemaType<
   typeof LocalGoogleCredentialSchema
->;
+> & {
+  _id: Types.ObjectId;
+};
 export const LocalGoogleCredential =
   models.LocalGoogleCredential ||
   model("LocalGoogleCredential", LocalGoogleCredentialSchema);

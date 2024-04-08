@@ -1,4 +1,5 @@
 import { ConnectionProviderProps } from "@/providers/connections-provider";
+import { Node } from "reactflow";
 import { z } from "zod";
 
 export const ProfileSchema = z.object({
@@ -23,7 +24,7 @@ export type Connection = {
   slackSpecial?: boolean;
 };
 
-export type EditorCanvasTypes =
+export type CustomNodeTypes =
   | "Email"
   | "Condition"
   | "AI"
@@ -36,32 +37,22 @@ export type EditorCanvasTypes =
   | "Action"
   | "Wait";
 
-export type EditorCanvasCardType = {
+export type CustomNodeDataType = {
   title: string;
   description: string;
   completed: boolean;
   current: boolean;
   metadata: any;
-  type: EditorCanvasTypes;
+  type: CustomNodeTypes;
 };
 
-export type EditorNodeType = {
-  id: string;
-  type: EditorCanvasCardType["type"];
-  position: {
-    x: number;
-    y: number;
-  };
-  data: EditorCanvasCardType;
-};
-
-export type EditorNode = EditorNodeType;
+export type CustomNodeType = Node<CustomNodeDataType, CustomNodeTypes>;
 
 export type EditorActions =
   | {
       type: "LOAD_DATA";
       payload: {
-        elements: EditorNode[];
+        nodes: CustomNodeType[];
         edges: {
           id: string;
           source: string;
@@ -72,7 +63,7 @@ export type EditorActions =
   | {
       type: "UPDATE_NODE";
       payload: {
-        elements: EditorNode[];
+        nodes: CustomNodeType[];
       };
     }
   | { type: "REDO" }
@@ -80,7 +71,7 @@ export type EditorActions =
   | {
       type: "SELECTED_ELEMENT";
       payload: {
-        element: EditorNode;
+        node: CustomNodeType;
       };
     };
 

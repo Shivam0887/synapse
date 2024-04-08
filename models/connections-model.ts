@@ -1,4 +1,4 @@
-import { models, model, Schema, InferSchemaType } from "mongoose";
+import { models, model, Schema, InferSchemaType, Types } from "mongoose";
 import { DiscordWebhooks } from "./discord-webhooks-model";
 import { Notion } from "./notion-model";
 import { Slack } from "./slack-model";
@@ -22,8 +22,18 @@ export const ConnectionsSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "Slack",
   },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-export type ConnectionsType = InferSchemaType<typeof ConnectionsSchema>;
+export type ConnectionsType = InferSchemaType<typeof ConnectionsSchema> & {
+  _id: Types.ObjectId;
+};
 export const Connections =
   models.Connections || model("Connections", ConnectionsSchema);

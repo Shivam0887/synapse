@@ -5,7 +5,7 @@ import Home from "@/components/icons/home";
 import Payment from "@/components/icons/payment";
 import Settings from "@/components/icons/settings";
 import Workflows from "@/components/icons/workflows";
-import { Connection } from "./types";
+import { Connection, CustomNodeTypes } from "./types";
 
 export const menuOptions = [
   { name: "Dashboard", Component: Home, href: "/dashboard" },
@@ -17,7 +17,10 @@ export const menuOptions = [
   { name: "Logs", Component: Logs, href: "/logs" },
 ];
 
-export const EditorCanvasDefaultCardTypes = {
+export const CustomNodeDefaultValues: Record<
+  string,
+  { description: string; type: CustomNodeTypes }
+> = {
   Email: { description: "Send and email to a user", type: "Action" },
   Condition: {
     description: "Boolean operator that creates different conditions lanes.",

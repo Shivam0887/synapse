@@ -1,4 +1,4 @@
-import { models, model, Schema, InferSchemaType } from "mongoose";
+import { models, model, Schema, InferSchemaType, Types } from "mongoose";
 import { ConnectionsSchema } from "./connections-model";
 import { User } from "./user-model";
 
@@ -23,8 +23,20 @@ export const DiscordWebhooksSchema = new Schema({
     unique: true,
   },
   connections: [ConnectionsSchema],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
 });
 
-export type DiscordWebhooksType = InferSchemaType<typeof DiscordWebhooksSchema>;
+export type DiscordWebhooksType = InferSchemaType<
+  typeof DiscordWebhooksSchema
+> & {
+  _id: Types.ObjectId;
+};
 export const DiscordWebhooks =
   models.DiscordWebhooks || model("DiscordWebhooks", DiscordWebhooksSchema);
