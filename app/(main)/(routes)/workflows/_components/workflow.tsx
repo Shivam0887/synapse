@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardDescription,
@@ -8,15 +10,25 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import Image from "next/image";
 import Link from "next/link";
+import { onPublishWorkflow } from "../_actions/workflow-action";
+import { toast } from "sonner";
 
 type WorkflowProps = {
   id: string;
   name: string;
-  publish: boolean | null;
+  publish: boolean | undefined;
   description: string;
 };
 
 const Workflow = ({ description, id, name, publish }: WorkflowProps) => {
+  const onPublish = async (checked: boolean) => {
+    const response = await onPublishWorkflow({
+      workflowId: id,
+      publish: checked,
+    });
+    toast(response);
+  };
+
   return (
     <Card className="flex items-center justify-between w-full">
       <CardHeader className="flex flex-col gap-4">
@@ -56,16 +68,16 @@ const Workflow = ({ description, id, name, publish }: WorkflowProps) => {
             />
           </div>
         </Link>
-        <div className="">
+        <div>
           <CardTitle className="text-lg">{name}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </div>
       </CardHeader>
       <div className="flex flex-col items-center gap-2 p-4">
         <Label htmlFor="publish" className="text-muted-foreground">
-          On
+          {publish ? "Published" : "Unpublished"}
         </Label>
-        <Switch id="publish" />
+        <Switch id="publish" checked={publish} onCheckedChange={onPublish} />
       </div>
     </Card>
   );

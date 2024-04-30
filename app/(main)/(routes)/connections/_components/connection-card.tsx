@@ -14,8 +14,7 @@ type ConnectionCardProps = {
   icon: string;
   title: ConnectionTypes;
   description: string;
-  callback?: () => void;
-  connected?: {} & any;
+  connected?: Record<string, boolean>;
 };
 
 const ConnectionCard = ({
@@ -43,7 +42,7 @@ const ConnectionCard = ({
         </div>
       </CardHeader>
       <div className="flex flex-col items-center gap-2 p-4">
-        {false && connected[type] ? (
+        {connected && connected[type] ? (
           <div className="border-bg-primary rounded-lg border-2 px-3 py-2 font-bold text-white">
             Connected
           </div>

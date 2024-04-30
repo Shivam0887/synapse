@@ -5,11 +5,11 @@ import { useEditor } from "@/providers/editor-provider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
   Background,
+  BackgroundVariant,
   Connection,
   Controls,
   EdgeChange,
   MiniMap,
-  Node,
   NodeChange,
   ReactFlowInstance,
   addEdge,
@@ -30,19 +30,18 @@ import { CustomNodeDefaultValues } from "@/lib/constant";
 import WorkflowLoading from "./workflow-loading";
 import FlowInstance from "./flow-instance";
 import EditorSidebar from "./editor-sidebar";
+import { onGetNodesEdges } from "../../_actions/workflow-action";
 
-const initialNodes: CustomNodeType[] = [];
-const initialEdges: { id: string; source: string; target: string }[] = [];
+type CustomEdgeType = { id: string; source: string; target: string };
 
 const Editor = () => {
   const { dispatch, state } = useEditor();
-  const params = useParams();
+  const { editorId } = useParams() as { editorId: string };
 
-  const [nodes, setNodes] = useState(initialNodes);
-  const [edges, setEdges] = useState(initialEdges);
+  const [nodes, setNodes] = useState<CustomNodeType[]>([]);
+  const [edges, setEdges] = useState<CustomEdgeType[]>([]);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState<boolean>(false);
-  const [reactFlowInstance, setReactFlowInstance] =
-    useState<ReactFlowInstance>();
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance>();
 
   const nodeTypes = useMemo(
     () => ({
@@ -56,31 +55,26 @@ const Editor = () => {
       "Google Calendar": CustomNode,
       Trigger: CustomNode,
       Action: CustomNode,
+      Discord: CustomNode,
       Wait: CustomNode,
     }),
     []
   );
 
-  const onDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
+  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
 
-      const type = e.dataTransfer.getData("application/reactflow") as
-        | CustomNodeTypes
-        | undefined;
-
+      const type = e.dataTransfer.getData("application/reactflow") as CustomNodeTypes | undefined;
       if (!type) return;
 
-      const triggerAlreadyExists = state.editor.nodes.find(
-        (node) => node.type === "Trigger"
-      );
-
+      const triggerAlreadyExists = state.editor.nodes.find((node) => node.type === "Trigger");
       if (type === "Trigger" && triggerAlreadyExists) {
         toast("Only one trigger can be added to the automation at the moment.");
         return;
       }
 
       if (!reactFlowInstance) return;
+      
       const position = reactFlowInstance.screenToFlowPosition({
         x: e.clientX,
         y: e.clientY,
@@ -110,26 +104,21 @@ const Editor = () => {
     e.dataTransfer.effectAllowed = "move";
   }, []);
 
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) =>
-      setNodes((nodes) => {
-        const updatedNodes = applyNodeChanges(
-          changes,
-          nodes
-        ) as CustomNodeType[];
-        return updatedNodes;
-      }),
+  const onNodesChange = useCallback((changes: NodeChange[]) =>
+    setNodes((nodes) => {
+      const updatedNodes = applyNodeChanges(changes, nodes) as CustomNodeType[];
+      return updatedNodes;
+    }),
     [setNodes]
   );
 
-  const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) =>
-      setEdges((edges) => applyEdgeChanges(changes, edges)),
+  const onEdgesChange = useCallback((changes: EdgeChange[]) => 
+    setEdges((edges) => applyEdgeChanges(changes, edges)),
     [setEdges]
   );
 
-  const onConnect = useCallback(
-    (connection: Connection) => setEdges((edges) => addEdge(connection, edges)),
+  const onConnect = useCallback((connection: Connection) => 
+    setEdges((edges) => addEdge(connection, edges)),
     [setEdges]
   );
 
@@ -155,16 +144,18 @@ const Editor = () => {
     });
   };
 
-  const onGetWorkFlow = async () => {
+  const onGetWorkFlow = useCallback(async () => {
     setIsWorkflowLoading(true);
-    // const response = await onGetNodesEdges(params?.editorId!);
-    // if (response) {
-    //   setEdges(JSON.parse(response.edges!));
-    //   setNodes(JSON.parse(response.nodes!));
-    //   setIsWorkflowLoading(false);
-    // }
+    const response = await onGetNodesEdges({ flowId: editorId });
+    if (response.status && response.data) {
+      const _edges = JSON.parse(JSON.parse(response.data).edges) as CustomEdgeType[];
+      const _nodes = JSON.parse(JSON.parse(response.data).nodes) as CustomNodeType[];
+
+      setEdges(_edges);
+      setNodes(_nodes);
+    }
     setIsWorkflowLoading(false);
-  };
+  }, [editorId]);
 
   useEffect(() => {
     dispatch({ type: "LOAD_DATA", payload: { edges, nodes } });
@@ -172,7 +163,7 @@ const Editor = () => {
 
   useEffect(() => {
     onGetWorkFlow();
-  }, []);
+  }, [onGetWorkFlow]);
 
   return (
     <ResizablePanelGroup direction="horizontal">
@@ -193,13 +184,15 @@ const Editor = () => {
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 onInit={setReactFlowInstance}
-                onError={(_, message: string) => {
-                  toast(message);
-                }}
+                onError={(_, message: string) => { toast(message) }}
                 fitView
                 maxZoom={1.5}
               >
-                <Background gap={12} size={1} />
+                <Background
+                  gap={12}
+                  size={1}
+                  variant={BackgroundVariant.Dots}
+                />
                 <MiniMap
                   className="!bg-background"
                   position="bottom-left"
@@ -218,8 +211,8 @@ const Editor = () => {
         {isWorkflowLoading ? (
           <WorkflowLoading />
         ) : (
-          <FlowInstance nodes={nodes} edges={edges}>
-            <EditorSidebar nodes={nodes} />
+          <FlowInstance>
+            <EditorSidebar />
           </FlowInstance>
         )}
       </ResizablePanel>

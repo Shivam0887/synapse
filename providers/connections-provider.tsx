@@ -1,48 +1,54 @@
 "use client";
 import { createContext, useContext, useState } from "react";
 
+export type SlackNodeType = {
+  appId: string;
+  authedUserId: string;
+  authedUserToken: string;
+  botUserId: string;
+  teamId: string;
+  teamName: string;
+  content: string;
+  webhookURL: string;
+};
+
+export type NotionNodeType = {
+  accessToken: string;
+  databaseId: string;
+  workspaceName: string;
+  content: string;
+};
+
+export type DiscordNodeType = {
+  webhookURL: string;
+  content: string;
+  webhookName: string;
+  guildName: string;
+  channelName: string;
+};
+
+export type WorkflowTemplateType = {
+  discord?: string;
+  notion?: string;
+  slack?: string;
+};
+
 export type ConnectionProviderProps = {
-  discordNode: {
-    webhookURL: string;
-    content: string;
-    webhookName: string;
-    guildName: string;
-  };
-  setDiscordNode: React.Dispatch<React.SetStateAction<any>>;
-  googleNode: {}[];
-  setGoogleNode: React.Dispatch<React.SetStateAction<any>>;
-  notionNode: {
-    accessToken: string;
-    databaseId: string;
-    workspaceName: string;
-    content: "";
-  };
-  workflowTemplate: {
-    discord?: string;
-    notion?: string;
-    slack?: string;
-  };
-  setNotionNode: React.Dispatch<React.SetStateAction<any>>;
-  slackNode: {
-    appId: string;
-    authedUserId: string;
-    authedUserToken: string;
-    slackAccessToken: string;
-    botUserId: string;
-    teamId: string;
-    teamName: string;
-    content: string;
-  };
-  setSlackNode: React.Dispatch<React.SetStateAction<any>>;
-  setWorkFlowTemplate: React.Dispatch<
-    React.SetStateAction<{
-      discord?: string;
-      notion?: string;
-      slack?: string;
-    }>
-  >;
+  googleNode: {};
   isLoading: boolean;
+  slackNode: SlackNodeType;
+  notionNode: NotionNodeType;
+  discordNode: DiscordNodeType;
+  workflowTemplate: WorkflowTemplateType;
+
+  setGoogleNode: React.Dispatch<React.SetStateAction<any>>;
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setSlackNode: React.Dispatch<React.SetStateAction<SlackNodeType>>;
+  setNotionNode: React.Dispatch<React.SetStateAction<NotionNodeType>>;
+  setDiscordNode: React.Dispatch<React.SetStateAction<DiscordNodeType>>;
+  setWorkFlowTemplate: React.Dispatch<
+    React.SetStateAction<WorkflowTemplateType>
+  >;
 };
 
 type ConnectionWithChildProps = {
@@ -55,8 +61,9 @@ const InitialValues: ConnectionProviderProps = {
     content: "",
     webhookName: "",
     guildName: "",
+    channelName: "",
   },
-  googleNode: [],
+  googleNode: {},
   notionNode: {
     accessToken: "",
     databaseId: "",
@@ -72,11 +79,11 @@ const InitialValues: ConnectionProviderProps = {
     appId: "",
     authedUserId: "",
     authedUserToken: "",
-    slackAccessToken: "",
     botUserId: "",
     teamId: "",
     teamName: "",
     content: "",
+    webhookURL: "",
   },
   isLoading: false,
   setGoogleNode: () => undefined,

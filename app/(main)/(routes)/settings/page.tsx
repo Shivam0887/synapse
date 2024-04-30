@@ -3,7 +3,7 @@ import React from "react";
 import ProfilePicture from "./_components/profile-picture";
 import ConnectToDB from "@/lib/connectToDB";
 import { User, UserType } from "@/models/user-model";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
 const SettingsPage = async () => {

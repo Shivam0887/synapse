@@ -5,7 +5,7 @@ import Home from "@/components/icons/home";
 import Payment from "@/components/icons/payment";
 import Settings from "@/components/icons/settings";
 import Workflows from "@/components/icons/workflows";
-import { Connection, CustomNodeTypes } from "./types";
+import { Connection, ConnectionTypes, CustomNodeTypes } from "./types";
 
 export const menuOptions = [
   { name: "Dashboard", Component: Home, href: "/dashboard" },
@@ -21,7 +21,7 @@ export const CustomNodeDefaultValues: Record<
   string,
   { description: string; type: CustomNodeTypes }
 > = {
-  Email: { description: "Send and email to a user", type: "Action" },
+  Email: { description: "Send an email to a user", type: "Trigger" },
   Condition: {
     description: "Boolean operator that creates different conditions lanes.",
     type: "Action",
@@ -31,7 +31,7 @@ export const CustomNodeDefaultValues: Record<
       "Use the power of AI to summarize, respond, create and much more.",
     type: "Action",
   },
-  Slack: { description: "Send a notification to slack", type: "Action" },
+  Slack: { description: "Send a notification to slack", type: "Trigger" },
   "Google Drive": {
     description:
       "Connect with Google drive to trigger actions or to create files and folders.",
@@ -45,11 +45,11 @@ export const CustomNodeDefaultValues: Record<
   },
   Discord: {
     description: "Post messages to your discord server",
-    type: "Action",
+    type: "Trigger",
   },
   "Google Calendar": {
     description: "Create a calendar invite.",
-    type: "Action",
+    type: "Trigger",
   },
   Trigger: {
     description: "An event that starts the workflow.",
@@ -65,35 +65,26 @@ export const CustomNodeDefaultValues: Record<
   },
 };
 
-export const CONNECTIONS: Connection[] = [
-  {
+export const CONNECTIONS: Record<ConnectionTypes, Connection> = {
+  "Google Drive": {
     title: "Google Drive",
-    description: "Connect your google drive to listen to folder changes",
+    description: "Connect your google drive to listen to files/folder changes",
     image: "/googleDrive.png",
-    connectionKey: "googleNode",
-    alwaysTrue: true,
   },
-  {
+  Discord: {
     title: "Discord",
     description: "Connect your discord to send notification and messages",
     image: "/discord.png",
-    connectionKey: "discordNode",
-    accessTokenKey: "webhookURL",
   },
-  {
+  Notion: {
     title: "Notion",
     description: "Create entries in your notion dashboard and automate tasks.",
     image: "/notion.png",
-    connectionKey: "notionNode",
-    accessTokenKey: "accessToken",
   },
-  {
+  Slack: {
     title: "Slack",
     description:
       "Use slack to send notifications to team members through your own custom bot.",
     image: "/slack.png",
-    connectionKey: "slackNode",
-    accessTokenKey: "slackAccessToken",
-    slackSpecial: true,
   },
-];
+};

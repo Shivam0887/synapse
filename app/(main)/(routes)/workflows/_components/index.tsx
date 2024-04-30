@@ -1,18 +1,18 @@
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import Workflow from "./workflow";
 import ConnectToDB from "@/lib/connectToDB";
 import { User } from "@/models/user-model";
 import {
-  Workflows as WorkflowsModel,
-  WorkflowsType,
-} from "@/models/workflows-model";
+  Workflow as WorkflowModel,
+  WorkflowType,
+} from "@/models/workflow-model";
 import { Ghost } from "lucide-react";
 
 const Workflows = async () => {
   const user = await currentUser();
   ConnectToDB();
   const dbUser = await User.findOne({ userId: user?.id }, { _id: 1 });
-  const workflows = await WorkflowsModel.find<WorkflowsType>({
+  const workflows = await WorkflowModel.find<WorkflowType>({
     userId: dbUser?._id,
   }).sort({ createdAt: "desc" });
 

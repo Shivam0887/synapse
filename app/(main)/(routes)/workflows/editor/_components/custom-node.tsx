@@ -1,6 +1,6 @@
-import { CustomNodeDataType } from "@/lib/types";
+import { CustomNodeDataType, CustomNodeType } from "@/lib/types";
 import { useEditor } from "@/providers/editor-provider";
-import { useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { Position, useNodeId } from "reactflow";
 import CustomNodeIcon from "./custom-node-icon";
 import CustomHandle from "./custom-handle";
@@ -12,19 +12,33 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
+import { updateNodeId } from "../../_actions/workflow-action";
+import { toast } from "sonner";
 
 type CustomNodeProps = {
   data: CustomNodeDataType;
+  selected?: boolean;
 };
 
-const CustomNode = ({ data }: CustomNodeProps) => {
+const CustomNode = ({ data, selected }: CustomNodeProps) => {
   const { dispatch, state } = useEditor();
   const nodeId = useNodeId();
+  const workflowId = usePathname().split("/").pop()!;
 
   const logo = useMemo(() => <CustomNodeIcon type={data.type} />, [data]);
 
+  const onNodeIdUpdate = async () => {
+    const response = await updateNodeId(workflowId, nodeId!);
+    if (response) {
+      const data = JSON.parse(response);
+      if (data.message) toast.message(data.message);
+      else toast.error(data.error);
+    }
+  };
+
   return (
-    <>
+    <div className={`${selected ? "border border-blue-600 rounded-lg" : ""}`}>
       {data.type !== "Trigger" && data.type !== "Google Drive" && (
         <CustomHandle
           position={Position.Top}
@@ -38,10 +52,11 @@ const CustomNode = ({ data }: CustomNodeProps) => {
           e.stopPropagation();
           const node = state.editor.nodes.find((node) => node.id === nodeId);
           if (node) {
+            onNodeIdUpdate();
             dispatch({ type: "SELECTED_ELEMENT", payload: { node } });
           }
         }}
-        className="relative max-w-[400px] dark:border-muted-foreground/70"
+        className="relative h-auto max-w-[400px] dark:border-muted-foreground/70"
       >
         <CardHeader className="flex flex-row items-center gap-4 mt-5">
           <div>{logo}</div>
@@ -69,9 +84,13 @@ const CustomNode = ({ data }: CustomNodeProps) => {
         />
       </Card>
 
-      <CustomHandle type="source" position={Position.Bottom} id="a" />
-    </>
+      <CustomHandle
+        type="source"
+        position={Position.Bottom}
+        id="bottomCenter"
+      />
+    </div>
   );
 };
 
-export default CustomNode;
+export default memo(CustomNode);

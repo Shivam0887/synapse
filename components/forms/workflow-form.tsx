@@ -23,7 +23,7 @@ import {
 
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
-import { createWorkflow } from "@/app/(main)/(routes)/workflows/_actions/create-workflow-action";
+import { createWorkflow } from "@/app/(main)/(routes)/workflows/_actions/workflow-action";
 import { toast } from "sonner";
 import { useModal } from "@/providers/modal-provider";
 
@@ -45,17 +45,16 @@ const WorkflowForm = ({ subTitle, title }: WorkflowFormProps) => {
   const { setClose } = useModal();
 
   const onSubmit = async (values: z.infer<typeof WorkflowFormSchema>) => {
-    const { success, message, workflowId } = await createWorkflow({
+    const res = await createWorkflow({
       name: values.name,
       description: values.description,
     });
 
     setClose();
-    if (success) {
-      router.push(`/workflows/editor/${workflowId}`);
-    } else {
-      toast(message);
+    if (res?.success) {
+      router.push(`/workflows/editor/${res?.workflowId}`);
     }
+    toast(res?.message);
   };
 
   const isLoading = form.formState.isLoading;

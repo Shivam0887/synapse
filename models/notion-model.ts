@@ -1,26 +1,34 @@
-import { models, model, Schema, InferSchemaType } from "mongoose";
-import { ConnectionsSchema } from "./connections-model";
-import { User } from "./user-model";
+import { models, model, Schema, InferSchemaType, Types } from "mongoose";
 
-export const NotionSchema = new Schema({
-  accessToken: { type: String, unique: true },
-  workspaceId: { type: String, unique: true },
-  databaseId: { type: String, unique: true },
-  workspaceName: { type: String, required: true },
-  workspaceIcon: { type: String, required: true },
-  userId: { type: Schema.Types.ObjectId, ref: "User" },
-  connections: [ConnectionsSchema],
-  createdAt: {
-    type: Date,
-    default: Date.now,
+export const NotionSchema = new Schema(
+  {
+    workspaceId: { type: String, unique: true },
+    databaseId: { type: String, unique: true },
+    workspaceName: { type: String, required: true },
+    workspaceIcon: { type: String, required: true },
+    userId: { type: Schema.Types.ObjectId, ref: "User" },
+    accessToken: { type: String, unique: true },
+    refreshToken: { type: String, unique: true },
+    nodeId: { type: String, unique: true },
+    template: String,
+    // Can have multiple source node
+    connectionId: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Connection",
+      },
+    ],
+    workflowId: {
+      type: Schema.Types.ObjectId,
+      ref: "Workflow",
+    },
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+  { timestamps: true }
+);
+
+NotionSchema.index({ nodeId: 1 });
 
 export type NotionType = InferSchemaType<typeof NotionSchema> & {
-  _id: Types.ObjectId;
+  _id?: Types.ObjectId;
 };
 export const Notion = models.Notion || model("Notion", NotionSchema);

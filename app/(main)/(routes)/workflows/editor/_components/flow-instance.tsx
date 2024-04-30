@@ -1,54 +1,89 @@
 import { Button } from "@/components/ui/button";
-import { CustomNodeType } from "@/lib/types";
-import { useNodeConnections } from "@/providers/connections-provider";
 import { useParams } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  onCreateNodesEdges,
-  onFlowPublish,
-} from "../_actions/workflow-connections-action";
+  getWorkflowById,
+  onWorkflowSave,
+  onPublishWorkflow,
+} from "../../_actions/workflow-action";
+import { useEditor } from "@/providers/editor-provider";
+import { CustomNodeTypes } from "@/lib/types";
 
 type FlowInstanceProps = {
-  nodes: CustomNodeType[];
-  edges: { id: string; source: string; target: string }[];
   children: React.ReactNode;
 };
 
-const FlowInstance = ({ children, edges, nodes }: FlowInstanceProps) => {
-  const { editorId } = useParams();
-  const [isFlow, setIsFlow] = useState([]);
+type currentWorkflowType = {
+  nodeId: string;
+  nodeType: CustomNodeTypes;
+};
 
-  const { nodeConnection } = useNodeConnections();
-  const {} = nodeConnection;
+const FlowInstance = ({ children }: FlowInstanceProps) => {
+  const { editorId } = useParams() as { editorId: string };
+  const { nodes, edges } = useEditor().state.editor;
+  const [currentWorkflow, setCurrentWorkflow] = useState<currentWorkflowType[]>([]);
 
-  const onFlowAutomation = useCallback(async () => {
-    const response = await onCreateNodesEdges({
-      flowId: editorId as string,
+  const [isPublished, setIsPublished] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const onSave = async () => {
+    setIsSaving(true);
+    const response = await onWorkflowSave({
+      workflowId: editorId,
       nodes: JSON.stringify(nodes),
       edges: JSON.stringify(edges),
-      flowPath: JSON.stringify(isFlow),
+      nodeMetadata: JSON.stringify(currentWorkflow),
     });
 
+    setIsSaving(false);
     toast(response);
-  }, []);
+  };
 
-  const onPublishWorkflow = useCallback(async () => {
-    const response = await onFlowPublish({
-      flowId: editorId as string,
-      publish: true,
+  const onPublish = async () => {
+    setIsPublishing(true);
+    const response = await onPublishWorkflow({
+      workflowId: editorId,
+      publish: !isPublished,
     });
+
+    setIsPublished(!isPublished);
+    setIsPublishing(false);
     toast(response);
-  }, []);
+  };
+
+  useEffect(() => {
+    (() => {
+      const workflow: currentWorkflowType[] = nodes.map((node) => {
+        return {
+          nodeId: node.id,
+          nodeType: node.data.type,
+        };
+      });
+
+      setCurrentWorkflow(workflow);
+    })();
+  }, [nodes]);
+
+  useEffect(() => {
+    (async () => {
+      const publish = await getWorkflowById(editorId);
+      setIsPublished(publish);
+    })();
+  }, [editorId]);
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex gap-3 p-4">
-        <Button onClick={onFlowAutomation} disabled={!isFlow.length}>
+        <Button onClick={onSave} disabled={!currentWorkflow.length || isSaving}>
           Save
         </Button>
-        <Button onClick={onPublishWorkflow} disabled={!isFlow.length}>
-          Publish
+        <Button
+          onClick={onPublish}
+          disabled={!currentWorkflow.length || isPublishing}
+        >
+          {!isPublished ? "Publish" : "Unpublish"}
         </Button>
       </div>
       {children}

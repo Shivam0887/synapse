@@ -1,6 +1,6 @@
 import ConnectToDB from "@/lib/connectToDB";
 import { User } from "@/models/user-model";
-import { currentUser } from "@clerk/nextjs";
+import { currentUser } from "@clerk/nextjs/server";
 import { trusted } from "mongoose";
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { UploadThingError } from "uploadthing/server";
