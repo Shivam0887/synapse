@@ -138,109 +138,19 @@ export const getGoogleListener = async (workflowId: string) => {
   try {
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
-    const listener = await Workflow.findOne<{ isListening: boolean } | null>(
+    const listener = await Workflow.findOne<{
+      googleDriveWatchTrigger: { isListening: boolean };
+    } | null>(
       { _id: workflowId, userId: dbUser?._id },
       {
         _id: 0,
-        googleDriveWatchTrigger: 1,
+        "googleDriveWatchTrigger.isListening": 1,
       }
     );
 
-    return JSON.stringify(listener);
+    return JSON.stringify(!!listener?.googleDriveWatchTrigger.isListening);
   } catch (error: any) {
     console.log(error?.message);
-  }
-};
-
-//  WIP
-export const onCreateNodeTemplate = async ({
-  content,
-  type,
-  workflowId,
-  accessToken,
-  channels,
-  notionDbId,
-  nodeId,
-}: {
-  content: string;
-  type: ConnectionTypes;
-  workflowId: string;
-  channels?: Option[];
-  accessToken?: string;
-  notionDbId?: string;
-  nodeId: string;
-}) => {
-  try {
-    ConnectToDB();
-    const user = await currentUser();
-    const dbUser = await User.findOne<UserType>({ userId: user?.id });
-
-    if (type === "Discord") {
-      const response = await Discord.findOneAndUpdate(
-        { userId: dbUser?._id, nodeId, workflowId },
-        {
-          $set: {
-            template: content,
-          },
-        }
-      );
-
-      if (response) return "Discord template saved";
-    } else if (type === "Slack") {
-      const response = await Slack.findOneAndUpdate(
-        { userId: dbUser?._id, nodeId, workflowId },
-        {
-          $set: {
-            template: content,
-          },
-        }
-      );
-
-      // if (response) {
-      //   const channelList = response.slackChannels as string[];
-
-      //   if (channelList.length) {
-      //     //remove duplicates before insert
-      //     const NonDuplicated = channelList.filter(
-      //       (channel) => channel !== channels![0].value
-      //     );
-
-      //     NonDuplicated.forEach(async (channel) => {
-      //       await Workflow.findByIdAndUpdate(workflowId, {
-      //         $push: {
-      //           slackChannels: channel,
-      //         },
-      //       });
-      //     });
-
-      //     return "Slack template saved";
-      //   }
-
-      //   // channels?.forEach(async ({ value }) => {
-      //   //   await Workflow.findByIdAndUpdate(workflowId, {
-      //   //     $push: {
-      //   //       slackChannels: value,
-      //   //     },
-      //   //   });
-      //   // });
-      // }
-
-      if (response) return "Slack template saved";
-    } else if (type === "Notion") {
-      const response = await Notion.findByIdAndUpdate(
-        { userId: dbUser?._id, nodeId, workflowId },
-        {
-          $set: {
-            template: content,
-          },
-        }
-      );
-
-      if (response) return "Notion template saved";
-    }
-  } catch (error: any) {
-    console.log(error?.message);
-    return `Error while saving template, ${error?.message}`;
   }
 };
 
@@ -347,7 +257,11 @@ export const getNodeData = async (
   }
 };
 
-export const updateNodeId = async (workflowId: string, nodeId: string) => {
+export const updateNodeId = async (
+  workflowId: string,
+  nodeId: string,
+  nodeType: CustomNodeTypes
+) => {
   try {
     if (workflowId && nodeId) {
       ConnectToDB();
@@ -359,14 +273,89 @@ export const updateNodeId = async (workflowId: string, nodeId: string) => {
         {
           $set: {
             selectedNodeId: nodeId,
+            selectedNodeType: nodeType,
           },
         }
       );
 
       return JSON.stringify({
         success: true,
-        message: "updated nodeId successfully!",
+        message: `${nodeType === "None" ? "No node" : nodeType} is selected`,
       });
+    }
+
+    return JSON.stringify({
+      success: false,
+      message: "please provide required parameters",
+    });
+  } catch (error: any) {
+    console.log(error?.message);
+    return JSON.stringify({ success: false, error: error?.message });
+  }
+};
+
+export const deleteNode = async (
+  workflowId: string,
+  nodeId: string,
+  nodeType: CustomNodeTypes
+) => {
+  try {
+    if (workflowId && nodeId && nodeType) {
+      ConnectToDB();
+      const user = await currentUser();
+      const dbUser = await User.findOne({ userId: user?.id });
+
+      if (nodeType === "Google Drive") {
+        await Workflow.findByIdAndUpdate(workflowId, {
+          $set: {
+            changes: "true",
+            files: "false",
+            fileId: "",
+            folderId: "",
+            channelId: "",
+            isListening: false,
+            supportedAllDrives: "true",
+            includeRemoved: "false",
+            restrictToMyDrive: "false",
+          },
+        });
+      } else {
+        const Model =
+          nodeType === "Discord"
+            ? Discord
+            : nodeType === "Notion"
+            ? Notion
+            : Slack;
+
+        const key =
+          nodeType === "Discord"
+            ? "discordId"
+            : nodeType === "Slack"
+            ? "slackId"
+            : "notionId";
+
+        const deletedNode = await Model.findOneAndDelete(
+          {
+            userId: dbUser?._id,
+            workflowId,
+            nodeId,
+          },
+          { new: true, projection: { _id: 1 } }
+        );
+
+        if (deletedNode) {
+          await Workflow.findByIdAndUpdate(workflowId, {
+            $pull: {
+              [key]: deletedNode?._id,
+            },
+          });
+        }
+
+        return JSON.stringify({
+          success: true,
+          data: `${nodeType} node deleted successfully!`,
+        });
+      }
     }
 
     return JSON.stringify({

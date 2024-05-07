@@ -69,11 +69,16 @@ export async function GET(req: NextRequest) {
         (channel: APITextChannel) => channel.guild_id === UserGuild[0].id
       );
 
-      const nodeId = await Workflow.findById(dbUser?.currentWorkflowId, {
+      const nodeMetaData = await Workflow.findById(dbUser?.currentWorkflowId, {
         selectedNodeId: 1,
+        selectedNodeType: 1,
       });
 
-      if (channel && nodeId) {
+      if (
+        channel &&
+        nodeMetaData?.selectedNodeId &&
+        nodeMetaData.selectedNodeType === "Discord"
+      ) {
         const discord = await Discord.create({
           workflowId: dbUser?.currentWorkflowId,
           userId: dbUser?._id,
@@ -87,7 +92,8 @@ export async function GET(req: NextRequest) {
           channelName: channel.name,
           accessToken,
           refreshToken,
-          nodeId: nodeId.selectedNodeId,
+          nodeId: nodeMetaData.selectedNodeId,
+          nodeType: nodeMetaData.selectedNodeType,
         });
 
         await Workflow.findByIdAndUpdate(dbUser?.currentWorkflowId, {
@@ -99,7 +105,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(
-      `http://localhost:3000/workflows/editorId/${dbUser?.currentWorkflowId}`
+      `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
     );
   } catch (error: any) {
     console.log(error?.message);

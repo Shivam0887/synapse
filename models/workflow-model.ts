@@ -20,6 +20,7 @@ export const WorkflowSchema = new Schema(
     publish: { type: Boolean, default: () => false },
     description: { type: String, required: true },
     selectedNodeId: { type: String, unique: true },
+    selectedNodeType: { type: String, unique: true },
 
     // a workspace can have multiple node except googleDrive
     discordId: [
@@ -83,6 +84,7 @@ export const WorkflowSchema = new Schema(
       },
       expiresAt: Number,
       resourceUri: String,
+      resourceId: String,
     },
   },
   { timestamps: true }

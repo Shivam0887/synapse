@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription } from "@/components/ui/card";
-import { onAddTemplate } from "@/lib/editor-utils";
 import { NodeType } from "@/lib/types";
 import { ConnectionProviderProps } from "@/providers/connections-provider";
 import React from "react";
@@ -27,7 +26,7 @@ const GoogleFileDetails = ({ googleFile, nodeConnection, nodeType }: Props) => {
     <div className="flex flex-wrap gap-2">
       <Card>
         <CardContent className="flex flex-wrap gap-2 p-4">
-          {details.map((detail) => (
+          {/* {details.map((detail) => (
             <div
               key={detail}
               onClick={() =>
@@ -40,7 +39,7 @@ const GoogleFileDetails = ({ googleFile, nodeConnection, nodeType }: Props) => {
                 {detail}: {googleFile[detail]}
               </CardDescription>
             </div>
-          ))}
+          ))} */}
         </CardContent>
       </Card>
     </div>

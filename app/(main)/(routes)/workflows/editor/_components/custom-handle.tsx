@@ -16,17 +16,10 @@ const CustomHandle = (props: CustomHandleProps) => {
         isValidConnection={(connection) => {
           //single source/target for a connection
           const IsConnectionExists = !!state.editor.edges.filter(
-            (edge) =>
-              connection.source === edge.source ||
-              connection.target === edge.target
+            (edge) => connection.target === edge.target
           ).length;
 
-          const sourceNode = state.editor.nodes.find(
-            (node) => node.id === connection.source
-          );
-
-          return (!IsConnectionExists || sourceNode?.type === "Condition") &&
-            connection.source !== connection.target
+          return !IsConnectionExists && connection.source !== connection.target
             ? true
             : false;
         }}

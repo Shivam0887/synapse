@@ -1,13 +1,15 @@
+"use client";
+
 import { useEditor } from "@/providers/editor-provider";
 import React, { useEffect, useState } from "react";
-import GoogleDriveFiles from "./google-drive-files";
+import GoogleDriveTrigger from "./google-drive-trigger";
 import DiscordTrigger from "./discord-trigger";
 import { Card, CardContent } from "@/components/ui/card";
 import SlackTrigger from "./slack-trigger";
 import {
   getTrigger,
   onSaveTrigger,
-} from "../../../connections/_actions/connection-action";
+} from "../../../../connections/_actions/connection-action";
 import { ConnectionTypes } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -20,13 +22,15 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
   const [workspaceName, setWorkspaceName] = useState("");
   const [loading, setLoading] = useState(false);
   const { selectedNode } = useEditor().state.editor;
+  const [databaseId, setDatabaseId] = useState<string>("");
 
   const onSave = async () => {
     const response = await onSaveTrigger(
       workflowId,
       selectedNode.id,
       trigger,
-      selectedNode.type! as ConnectionTypes
+      selectedNode.type! as ConnectionTypes,
+      databaseId
     );
     if (response) {
       const data = JSON.parse(response);
@@ -39,7 +43,11 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
   };
 
   useEffect(() => {
-    if ((selectedNode.type as ConnectionTypes) !== "Google Drive") {
+    if (
+      (selectedNode.type as ConnectionTypes) === "Discord" ||
+      (selectedNode.type as ConnectionTypes) === "Slack" ||
+      (selectedNode.type as ConnectionTypes) === "Notion"
+    ) {
       (async () => {
         setLoading(true);
         const response = await getTrigger(
@@ -52,13 +60,15 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
           if (data.success) {
             setTrigger(data.data.trigger);
             setWorkspaceName(data.data.channelName);
+            if (data.data.databaseId) {
+              setDatabaseId(data.data.databaseId);
+            }
           } else {
             if (data.message) toast.message(data.message);
             else toast.error(data.error);
           }
-
-          setLoading(false);
         }
+        setLoading(false);
       })();
     }
   }, [workflowId, selectedNode.id, selectedNode.type]);
@@ -66,7 +76,7 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
   return (
     <Card>
       <CardContent className="p-4">
-        {selectedNode.type === "Google Drive" && <GoogleDriveFiles />}
+        {selectedNode.type === "Google Drive" && <GoogleDriveTrigger />}
         {selectedNode.type === "Discord" && (
           <DiscordTrigger
             loading={loading}
@@ -84,6 +94,11 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
             trigger={trigger}
             workspaceName={workspaceName}
           />
+        )}
+        {selectedNode.type === "Notion" && (
+          <div className="text-center">
+            <p>No Trigger.</p>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -1,4 +1,9 @@
-import { CustomNodeDataType, CustomNodeType } from "@/lib/types";
+import {
+  ConnectionTypes,
+  CustomNodeDataType,
+  CustomNodeType,
+  CustomNodeTypes,
+} from "@/lib/types";
 import { useEditor } from "@/providers/editor-provider";
 import { memo, useEffect, useMemo } from "react";
 import { Position, useNodeId } from "reactflow";
@@ -28,8 +33,8 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
 
   const logo = useMemo(() => <CustomNodeIcon type={data.type} />, [data]);
 
-  const onNodeIdUpdate = async () => {
-    const response = await updateNodeId(workflowId, nodeId!);
+  const onNodeIdUpdate = async (nodeType: CustomNodeTypes) => {
+    const response = await updateNodeId(workflowId, nodeId!, nodeType);
     if (response) {
       const data = JSON.parse(response);
       if (data.message) toast.message(data.message);
@@ -39,7 +44,7 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
 
   return (
     <div className={`${selected ? "border border-blue-600 rounded-lg" : ""}`}>
-      {data.type !== "Trigger" && data.type !== "Google Drive" && (
+      {data.type !== "Google Drive" && (
         <CustomHandle
           position={Position.Top}
           type="target"
@@ -51,8 +56,8 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
         onClick={(e) => {
           e.stopPropagation();
           const node = state.editor.nodes.find((node) => node.id === nodeId);
-          if (node) {
-            onNodeIdUpdate();
+          if (node && node.type) {
+            onNodeIdUpdate(node.type);
             dispatch({ type: "SELECTED_ELEMENT", payload: { node } });
           }
         }}

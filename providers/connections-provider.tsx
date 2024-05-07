@@ -16,7 +16,7 @@ export type NotionNodeType = {
   accessToken: string;
   databaseId: string;
   workspaceName: string;
-  content: string;
+  content: any;
 };
 
 export type DiscordNodeType = {
@@ -35,20 +35,14 @@ export type WorkflowTemplateType = {
 
 export type ConnectionProviderProps = {
   googleNode: {};
-  isLoading: boolean;
   slackNode: SlackNodeType;
   notionNode: NotionNodeType;
   discordNode: DiscordNodeType;
-  workflowTemplate: WorkflowTemplateType;
 
   setGoogleNode: React.Dispatch<React.SetStateAction<any>>;
-  setIsLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setSlackNode: React.Dispatch<React.SetStateAction<SlackNodeType>>;
   setNotionNode: React.Dispatch<React.SetStateAction<NotionNodeType>>;
   setDiscordNode: React.Dispatch<React.SetStateAction<DiscordNodeType>>;
-  setWorkFlowTemplate: React.Dispatch<
-    React.SetStateAction<WorkflowTemplateType>
-  >;
 };
 
 type ConnectionWithChildProps = {
@@ -68,12 +62,7 @@ const InitialValues: ConnectionProviderProps = {
     accessToken: "",
     databaseId: "",
     workspaceName: "",
-    content: "",
-  },
-  workflowTemplate: {
-    discord: "",
-    notion: "",
-    slack: "",
+    content: {},
   },
   slackNode: {
     appId: "",
@@ -85,13 +74,10 @@ const InitialValues: ConnectionProviderProps = {
     content: "",
     webhookURL: "",
   },
-  isLoading: false,
   setGoogleNode: () => undefined,
   setDiscordNode: () => undefined,
   setNotionNode: () => undefined,
   setSlackNode: () => undefined,
-  setIsLoading: () => undefined,
-  setWorkFlowTemplate: () => undefined,
 };
 
 const ConnectionsContext = createContext(InitialValues);
@@ -102,10 +88,6 @@ export const ConnectionsProvider = ({ children }: ConnectionWithChildProps) => {
   const [googleNode, setGoogleNode] = useState(InitialValues.googleNode);
   const [notionNode, setNotionNode] = useState(InitialValues.notionNode);
   const [slackNode, setSlackNode] = useState(InitialValues.slackNode);
-  const [isLoading, setIsLoading] = useState(InitialValues.isLoading);
-  const [workflowTemplate, setWorkFlowTemplate] = useState(
-    InitialValues.workflowTemplate
-  );
 
   const values = {
     discordNode,
@@ -116,10 +98,6 @@ export const ConnectionsProvider = ({ children }: ConnectionWithChildProps) => {
     setNotionNode,
     slackNode,
     setSlackNode,
-    isLoading,
-    setIsLoading,
-    workflowTemplate,
-    setWorkFlowTemplate,
   };
 
   return <Provider value={values}>{children}</Provider>;

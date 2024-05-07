@@ -1,50 +1,92 @@
-import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
-import { Client } from "@notionhq/client";
+import ConnectToDB from "@/lib/connectToDB";
+import { User, UserType } from "@/models/user-model";
+import { currentUser } from "@clerk/nextjs/server";
+import { Notion } from "@/models/notion-model";
+import { Workflow } from "@/models/workflow-model";
+
+const clientId = process.env.NOTION_CLIENT_ID!;
+const clientSecret = process.env.NOTION_CLIENT_SECRET!;
+const redirectUri = process.env.NOTION_REDIRECT_URI!;
 
 export async function GET(req: NextRequest) {
-  const code = req.nextUrl.searchParams.get("code");
-  const encoded = Buffer.from(
-    `${process.env.NOTION_CLIENT_ID}:${process.env.NOTION_API_SECRET}`
-  ).toString("base64");
+  const user = await currentUser();
+  ConnectToDB();
+  const dbUser = await User.findOne<UserType>(
+    { userId: user?.id },
+    { currentWorkflowId: 1 }
+  );
 
-  if (code) {
-    const response = await axios("https://api.notion.com/v1/oauth/token", {
-      method: "POST",
-      headers: {
-        "Content-type": "application/json",
-        Authorization: `Basic ${encoded}`,
-        "Notion-Version": "2022-06-28",
-      },
-      data: JSON.stringify({
-        grant_type: "authorization_code",
-        code: code,
-        redirect_uri: process.env.NOTION_REDIRECT_URI!,
-      }),
-    });
-    if (response) {
-      const notion = new Client({
-        auth: response.data.access_token,
-      });
-      const databasesPages = await notion.search({
-        filter: {
-          value: "database",
-          property: "object",
-        },
-        sort: {
-          direction: "ascending",
-          timestamp: "last_edited_time",
-        },
-      });
-      const databaseId = databasesPages?.results?.length
-        ? databasesPages.results[0].id
-        : "";
+  try {
+    const code = req.nextUrl.searchParams.get("code");
+    const error = req.nextUrl.searchParams.get("error");
 
-      return NextResponse.redirect(
-        `https://localhost:3000/connections?access_token=${response.data.access_token}&workspace_name=${response.data.workspace_name}&workspace_icon=${response.data.workspace_icon}&workspace_id=${response.data.workspace_id}&database_id=${databaseId}`
+    if (code && dbUser) {
+      const encoded = Buffer.from(`${clientId}:${clientSecret}`).toString(
+        "base64"
       );
-    }
-  }
 
-  return NextResponse.redirect("https://localhost:3000/connections");
+      const response = await fetch("https://api.notion.com/v1/oauth/token", {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+          Authorization: `Basic ${encoded}`,
+        },
+        body: JSON.stringify({
+          grant_type: "authorization_code",
+          code: code,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      if (response) {
+        const data = await response.json();
+
+        const nodeMetaData = await Workflow.findById(
+          dbUser?.currentWorkflowId,
+          {
+            selectedNodeId: 1,
+            selectedNodeType: 1,
+          }
+        );
+
+        if (
+          nodeMetaData?.selectedNodeId &&
+          nodeMetaData.selectedNodeType === "Notion"
+        ) {
+          const notion = await Notion.create({
+            botId: data.bot_id,
+            userId: dbUser._id,
+            workflowId: dbUser.currentWorkflowId,
+            nodeId: nodeMetaData.selectedNodeId,
+            nodeType: nodeMetaData.selectedNodeType,
+            workspaceId: data.workspace_id,
+            workspaceName: data.workspace_name,
+            workspaceIcon: data.workspace_icon,
+            accessToken: data.access_token,
+          });
+
+          await Workflow.findByIdAndUpdate(dbUser?.currentWorkflowId, {
+            $push: {
+              notionId: notion?._id,
+            },
+          });
+        }
+
+        return NextResponse.redirect(
+          `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
+        );
+      }
+    } else if (error) {
+      throw new Error(error);
+    }
+  } catch (error: any) {
+    console.log(error?.message);
+    if (dbUser)
+      return NextResponse.redirect(
+        `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
+      );
+    else return NextResponse.redirect("http://localhost:3000/workflows");
+  }
 }

@@ -12,23 +12,23 @@ import { ConnectionProviderProps } from "@/providers/connections-provider";
 import { useEditor } from "@/providers/editor-provider";
 import { useStore } from "@/providers/store-provider";
 import GoogleFileDetails from "./google-file-details";
-import GoogleDriveFiles from "./google-drive-files";
 import ActionButton from "./action-button";
 import { useEffect } from "react";
 import axios from "axios";
 import { toast } from "sonner";
 import { getFileMetaData } from "../../../connections/_actions/google-action";
-import { WorkflowWithNodeTypes } from "./editor-sidebar";
 import { Label } from "@/components/ui/label";
 
 type ServiceInteractionProps = {
-  workflow: WorkflowWithNodeTypes | undefined;
   nodeConnection: ConnectionProviderProps;
+  isConnected: boolean;
+  nodeType: ConnectionTypes;
 };
 
 const ServiceInteraction = ({
   nodeConnection,
-  workflow,
+  isConnected,
+  nodeType,
 }: ServiceInteractionProps) => {
   const {
     googleFile,
@@ -61,20 +61,14 @@ const ServiceInteraction = ({
     // fetchFileMetaData();
   }, []);
 
-  const connectionTitle = selectedNode.data.title as ConnectionTypes;
-  const nodeType = nodeMapper[connectionTitle];
-  const nodeData = workflow?.[nodeType];
-
-  const isConnected = Array.isArray(nodeData) === false || !!nodeData?.length;
-
   if (!isConnected) return <p>Not Connected</p>;
 
   const content =
-    connectionTitle === "Discord"
+    nodeType === "Discord"
       ? discordNode.content
-      : connectionTitle === "Notion"
+      : nodeType === "Notion"
       ? notionNode.content
-      : connectionTitle === "Slack"
+      : nodeType === "Slack"
       ? slackNode.content
       : "";
 
@@ -94,34 +88,31 @@ const ServiceInteraction = ({
               type="text"
               id="testMessage"
               value={content}
-              onChange={(e) =>
-                onContentChange(e, nodeConnection, connectionTitle)
-              }
+              onChange={(e) => onContentChange(e, nodeConnection, nodeType)}
             />
           </div>
         )}
-        {Object.keys(googleFile).length > 0 &&
-          connectionTitle !== "Google Drive" && (
-            <Card className="w-full">
-              <CardHeader className="px-2 py-3">
-                <div className="flex flex-col gap-4">
-                  <CardTitle>Drive File</CardTitle>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <GoogleFileDetails
-                    nodeConnection={nodeConnection}
-                    nodeType="discordNode"
-                    googleFile={googleFile}
-                  />
-                </div>
-              </CardHeader>
-            </Card>
-          )}
+        {Object.keys(googleFile).length > 0 && nodeType !== "Google Drive" && (
+          <Card className="w-full">
+            <CardHeader className="px-2 py-3">
+              <div className="flex flex-col gap-4">
+                <CardTitle>Drive File</CardTitle>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <GoogleFileDetails
+                  nodeConnection={nodeConnection}
+                  nodeType="discordNode"
+                  googleFile={googleFile}
+                />
+              </div>
+            </CardHeader>
+          </Card>
+        )}
 
         {selectedNode.type === "Google Drive" ? (
           <p className="text-center mt-4">No Action.</p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col mt-3 gap-3">
             <ActionButton
               content={content}
               selectedSlackChannels={selectedSlackChannels}

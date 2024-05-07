@@ -41,33 +41,40 @@ export async function GET(req: NextRequest) {
 
     ConnectToDB();
     const accessToken = data.access_token;
-    const nodeId = await Workflow.findById(dbUser?.currentWorkflowId, {
+    const nodeMetaData = await Workflow.findById(dbUser?.currentWorkflowId, {
       selectedNodeId: 1,
+      selectedNodeType: 1,
     });
 
-    const slack = await Slack.create({
-      appId: data.app_id,
-      authenticated_userId: data.authed_user.id,
-      authenticated_userToken: data.authed_user.access_token,
-      botUserId: data.bot_user_id,
-      teamId: data.team.id,
-      teamName: data.team.name,
-      userId: dbUser?._id,
-      accessToken,
-      nodeId: nodeId.selectedNodeId,
-      trigger: "",
-      template: "",
-      channelId: data.incoming_webhook.channel_id,
-      channelName: data.incoming_webhook.channel,
-      webhookUrl: data.incoming_webhook.url,
-      workflowId: dbUser?.currentWorkflowId,
-    });
+    if (
+      nodeMetaData?.selectedNodeId &&
+      nodeMetaData?.selectedNodeType === "Discord"
+    ) {
+      const slack = await Slack.create({
+        appId: data.app_id,
+        authenticated_userId: data.authed_user.id,
+        authenticated_userToken: data.authed_user.access_token,
+        botUserId: data.bot_user_id,
+        teamId: data.team.id,
+        teamName: data.team.name,
+        userId: dbUser?._id,
+        accessToken,
+        nodeId: nodeMetaData.selectedNodeId,
+        nodeType: nodeMetaData.selectedNodeType,
+        trigger: "",
+        template: "",
+        channelId: data.incoming_webhook.channel_id,
+        channelName: data.incoming_webhook.channel,
+        webhookUrl: data.incoming_webhook.url,
+        workflowId: dbUser?.currentWorkflowId,
+      });
 
-    await Workflow.findByIdAndUpdate(dbUser?.currentWorkflowId, {
-      $push: {
-        slackId: slack?._id,
-      },
-    });
+      await Workflow.findByIdAndUpdate(dbUser?.currentWorkflowId, {
+        $push: {
+          slackId: slack?._id,
+        },
+      });
+    }
 
     // Handle the successful OAuth flow and redirect the user
     return NextResponse.redirect(

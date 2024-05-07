@@ -14,12 +14,21 @@ export const DiscordSchema = new Schema(
     webhookName: String,
     guildName: String,
     guildId: String,
-    template: String,
     channelId: {
       type: String,
       unique: true,
     },
     trigger: String,
+    action: {
+      trigger: String,
+      user: String,
+      message: String,
+      mode: {
+        type: String,
+        enum: ["default", "custom"],
+        default: () => "default",
+      },
+    },
     channelName: String,
     connectionId: {
       type: Schema.Types.ObjectId,
@@ -33,6 +42,10 @@ export const DiscordSchema = new Schema(
       type: String,
       unique: true,
     },
+    nodeType: {
+      type: String,
+      default: () => "Discord",
+    },
     accessToken: { type: String, unique: true },
     refreshToken: { type: String, unique: true },
   },
@@ -44,4 +57,5 @@ DiscordSchema.index({ nodeId: 1 });
 export type DiscordType = InferSchemaType<typeof DiscordSchema> & {
   _id?: Types.ObjectId;
 };
+
 export const Discord = models.Discord || model("Discord", DiscordSchema);

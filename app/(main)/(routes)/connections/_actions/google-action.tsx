@@ -1,5 +1,6 @@
 "use server";
-import { auth, clerkClient } from "@clerk/nextjs";
+import { auth, clerkClient } from "@clerk/nextjs/server";
+import axios from "axios";
 import { google } from "googleapis";
 
 export const getFileMetaData = async () => {
@@ -16,12 +17,16 @@ export const getFileMetaData = async () => {
     return { message: "User not found" };
   }
 
-  const clerkResponse = await clerkClient.users.getUserOauthAccessToken(
-    userId,
-    "oauth_google"
+  const clerkResponse = await axios.get(
+    `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_google`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY!}`,
+      },
+    }
   );
 
-  const accessToken = clerkResponse[0].token;
+  const accessToken = clerkResponse.data[0].token;
 
   oauth2Client.setCredentials({
     access_token: accessToken,

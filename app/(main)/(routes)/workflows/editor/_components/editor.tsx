@@ -1,6 +1,6 @@
 "use client";
 
-import { CustomNodeType, CustomNodeTypes } from "@/lib/types";
+import { ConnectionTypes, CustomNodeType, CustomNodeTypes } from "@/lib/types";
 import { useEditor } from "@/providers/editor-provider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
@@ -30,7 +30,7 @@ import { CustomNodeDefaultValues } from "@/lib/constant";
 import WorkflowLoading from "./workflow-loading";
 import FlowInstance from "./flow-instance";
 import EditorSidebar from "./editor-sidebar";
-import { onGetNodesEdges } from "../../_actions/workflow-action";
+import { deleteNode, onGetNodesEdges } from "../../_actions/workflow-action";
 
 type CustomEdgeType = { id: string; source: string; target: string };
 
@@ -41,40 +41,33 @@ const Editor = () => {
   const [nodes, setNodes] = useState<CustomNodeType[]>([]);
   const [edges, setEdges] = useState<CustomEdgeType[]>([]);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState<boolean>(false);
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance>();
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance>();
 
   const nodeTypes = useMemo(
     () => ({
-      Email: CustomNode,
-      Condition: CustomNode,
       AI: CustomNode,
       Slack: CustomNode,
       "Google Drive": CustomNode,
       Notion: CustomNode,
-      "Custom Webhook": CustomNode,
       "Google Calendar": CustomNode,
-      Trigger: CustomNode,
-      Action: CustomNode,
       Discord: CustomNode,
       Wait: CustomNode,
     }),
     []
   );
 
-  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+  const onDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
 
-      const type = e.dataTransfer.getData("application/reactflow") as CustomNodeTypes | undefined;
+      const type = e.dataTransfer.getData("application/reactflow") as
+        | CustomNodeTypes
+        | undefined;
       if (!type) return;
 
-      const triggerAlreadyExists = state.editor.nodes.find((node) => node.type === "Trigger");
-      if (type === "Trigger" && triggerAlreadyExists) {
-        toast("Only one trigger can be added to the automation at the moment.");
-        return;
-      }
-
       if (!reactFlowInstance) return;
-      
+
       const position = reactFlowInstance.screenToFlowPosition({
         x: e.clientX,
         y: e.clientY,
@@ -96,7 +89,7 @@ const Editor = () => {
 
       reactFlowInstance.setNodes((nodes) => nodes.concat(newNode));
     },
-    [state, reactFlowInstance]
+    [reactFlowInstance]
   );
 
   const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -104,21 +97,44 @@ const Editor = () => {
     e.dataTransfer.effectAllowed = "move";
   }, []);
 
-  const onNodesChange = useCallback((changes: NodeChange[]) =>
-    setNodes((nodes) => {
-      const updatedNodes = applyNodeChanges(changes, nodes) as CustomNodeType[];
-      return updatedNodes;
-    }),
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) =>
+      setNodes((nodes) => {
+        const updatedNodes = applyNodeChanges(
+          changes,
+          nodes
+        ) as CustomNodeType[];
+        return updatedNodes;
+      }),
     [setNodes]
   );
 
-  const onEdgesChange = useCallback((changes: EdgeChange[]) => 
-    setEdges((edges) => applyEdgeChanges(changes, edges)),
+  const onNodesDelete = useCallback(
+    async (nodes: CustomNodeType[]) => {
+      const nodeId = nodes[0].id;
+      const nodeType = nodes[0].type;
+
+      const response = await deleteNode(editorId, nodeId, nodeType!);
+      if (response) {
+        const data = JSON.parse(response);
+        if (data.success) toast.success(data.data);
+        else {
+          if (data.message) toast.message(data.message);
+          else toast.error(data.error);
+        }
+      }
+    },
+    [editorId]
+  );
+
+  const onEdgesChange = useCallback(
+    (changes: EdgeChange[]) =>
+      setEdges((edges) => applyEdgeChanges(changes, edges)),
     [setEdges]
   );
 
-  const onConnect = useCallback((connection: Connection) => 
-    setEdges((edges) => addEdge(connection, edges)),
+  const onConnect = useCallback(
+    (connection: Connection) => setEdges((edges) => addEdge(connection, edges)),
     [setEdges]
   );
 
@@ -134,11 +150,11 @@ const Editor = () => {
             description: "",
             metadata: {},
             title: "",
-            type: "Trigger",
+            type: "None",
           },
           id: "",
           position: { x: 0, y: 0 },
-          type: "Trigger",
+          type: "None",
         },
       },
     });
@@ -148,8 +164,12 @@ const Editor = () => {
     setIsWorkflowLoading(true);
     const response = await onGetNodesEdges({ flowId: editorId });
     if (response.status && response.data) {
-      const _edges = JSON.parse(JSON.parse(response.data).edges) as CustomEdgeType[];
-      const _nodes = JSON.parse(JSON.parse(response.data).nodes) as CustomNodeType[];
+      const _edges = JSON.parse(
+        JSON.parse(response.data).edges
+      ) as CustomEdgeType[];
+      const _nodes = JSON.parse(
+        JSON.parse(response.data).nodes
+      ) as CustomNodeType[];
 
       setEdges(_edges);
       setNodes(_nodes);
@@ -178,13 +198,17 @@ const Editor = () => {
                 edges={state.editor.edges}
                 nodeTypes={nodeTypes}
                 onNodesChange={onNodesChange}
+                onNodesDelete={onNodesDelete}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onClick={onClick}
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 onInit={setReactFlowInstance}
-                onError={(_, message: string) => { toast(message) }}
+                defaultEdgeOptions={{ animated: true }}
+                onError={(_, message: string) => {
+                  toast(message);
+                }}
                 fitView
                 maxZoom={1.5}
               >

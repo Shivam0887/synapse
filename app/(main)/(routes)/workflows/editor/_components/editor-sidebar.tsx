@@ -2,8 +2,7 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import CustomNodeIcon from "./custom-node-icon";
-import { WorkflowType } from "@/models/workflow-model";
-import { getWorkflowNodes } from "../../_actions/workflow-action";
+import { getNodeData } from "../../_actions/workflow-action";
 
 import { useStore } from "@/providers/store-provider";
 import { useEditor } from "@/providers/editor-provider";
@@ -24,41 +23,43 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import ServiceTrigger from "./service-trigger";
+import ServiceTrigger from "./triggers/service-trigger";
 import ServiceConnection from "./service-connection";
 import ServiceInteraction from "./service-interaction";
-
-import { SlackType } from "@/models/slack-model";
-import { NotionType } from "@/models/notion-model";
-import { DiscordType } from "@/models/discord-model";
 
 import {
   fetchBotSlackChannels,
   onConnections,
   onDrapStart,
 } from "@/lib/editor-utils";
-import { CustomNodeTypes } from "@/lib/types";
+import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
 import { CustomNodeDefaultValues } from "@/lib/constant";
-
-export type WorkflowWithNodeTypes = {
-  discordId: DiscordType[];
-  notionId: NotionType[];
-  slackId: SlackType[];
-  googleDriveWatchTrigger: Pick<WorkflowType, "googleDriveWatchTrigger">;
-};
+import ServiceAction from "./actions/service-action";
 
 const EditorSidebar = () => {
-  const { state } = useEditor();
-  const { nodes, selectedNode } = state.editor;
+  const { nodes, selectedNode } = useEditor().state.editor;
   const { nodeConnection } = useNodeConnections();
-  const { googleFile, setSlackChannels } = useStore();
-  const [workflow, setWorkflow] = useState<WorkflowWithNodeTypes>();
+  const { googleFile } = useStore();
+  const [isConnected, setIsConnected] = useState<boolean>(false);
   const { editorId } = useParams() as { editorId: string };
+  const isGoogleDriveNodeExists = nodes.some(
+    ({ type }) => type === "Google Drive"
+  );
 
   useEffect(() => {
-    onConnections(nodeConnection, state, editorId);
-    /* eslint-disable-next-line */
-  }, [state.editor.selectedNode]);
+    if (
+      selectedNode.type === "Discord" ||
+      selectedNode.type === "Notion" ||
+      selectedNode.type === "Slack"
+    )
+      onConnections(
+        nodeConnection,
+        selectedNode.id,
+        editorId,
+        selectedNode.type as ConnectionTypes
+      );
+    // eslint-disable-next-line
+  }, [editorId, selectedNode.id, selectedNode.type]);
 
   // useEffect(() => {
   //   if (nodeConnection.slackNode.slackAccessToken) {
@@ -70,17 +71,29 @@ const EditorSidebar = () => {
   // }, [nodeConnection, setSlackChannels]);
 
   useEffect(() => {
-    (async () => {
-      const response = await getWorkflowNodes(editorId);
-      if (response) {
-        const data = JSON.parse(response);
-        if (data.success) {
-          const workflow = data.workflow as WorkflowWithNodeTypes;
-          setWorkflow(workflow);
-        } else toast(data.error);
-      }
-    })();
-  }, [editorId]);
+    if (
+      selectedNode.type === "Discord" ||
+      selectedNode.type === "Notion" ||
+      selectedNode.type === "Slack" ||
+      selectedNode.type === "Google Drive"
+    ) {
+      (async () => {
+        const response = await getNodeData(
+          editorId,
+          selectedNode.id,
+          selectedNode.type!
+        );
+        if (response) {
+          const data = JSON.parse(response);
+          if (data.success) setIsConnected(data.isConnected);
+          else {
+            if (data.message) toast.message(data.message);
+            else toast.error(data.error);
+          }
+        }
+      })();
+    }
+  }, [editorId, selectedNode.id, selectedNode.type]);
 
   return (
     <aside>
@@ -94,8 +107,13 @@ const EditorSidebar = () => {
           <div className="flex flex-col gap-4 p-4 pb-56">
             {Object.entries(CustomNodeDefaultValues)
               .filter(
-                ([_, { type }]) =>
-                  (!nodes.length && type === "Trigger") || nodes.length
+                ([key]) =>
+                  !nodes.length ||
+                  !(
+                    !!nodes.length &&
+                    key === "Google Drive" &&
+                    isGoogleDriveNodeExists
+                  )
               )
               .map(([key, { description }]) => (
                 <Card
@@ -125,33 +143,49 @@ const EditorSidebar = () => {
             {selectedNode.data.title}
           </div>
 
-          <Accordion type="multiple">
-            <AccordionItem value="account">
-              <AccordionTrigger className="!no-underline">
-                Account
-              </AccordionTrigger>
-              <AccordionContent>
-                {selectedNode.type && (
-                  <ServiceConnection workflowId={editorId} />
-                )}
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="trigger">
-              <AccordionTrigger>Trigger</AccordionTrigger>
-              <AccordionContent>
-                <ServiceTrigger workflowId={editorId} />
-              </AccordionContent>
-            </AccordionItem>
-            <AccordionItem value="action">
-              <AccordionTrigger>Action</AccordionTrigger>
-              <AccordionContent>
-                <ServiceInteraction
-                  nodeConnection={nodeConnection}
-                  workflow={workflow}
-                />
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+          {selectedNode.type === "None" ? (
+            <div className="h-full flex items-center justify-center w-full">
+              Please select a node to continue.
+            </div>
+          ) : (
+            <Accordion type="multiple">
+              <AccordionItem value="account">
+                <AccordionTrigger className="!no-underline">
+                  Account
+                </AccordionTrigger>
+                <AccordionContent>
+                  {selectedNode.type && (
+                    <ServiceConnection
+                      workflowId={editorId}
+                      isConnected={isConnected}
+                    />
+                  )}
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="trigger">
+                <AccordionTrigger>Trigger</AccordionTrigger>
+                <AccordionContent>
+                  <ServiceTrigger workflowId={editorId} />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="action">
+                <AccordionTrigger>Action</AccordionTrigger>
+                <AccordionContent>
+                  <ServiceAction workflowId={editorId} />
+                </AccordionContent>
+              </AccordionItem>
+              <AccordionItem value="test">
+                <AccordionTrigger>Test</AccordionTrigger>
+                <AccordionContent>
+                  <ServiceInteraction
+                    nodeConnection={nodeConnection}
+                    isConnected={isConnected}
+                    nodeType={selectedNode.type as ConnectionTypes}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          )}
         </TabsContent>
       </Tabs>
     </aside>

@@ -8,7 +8,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { TriggerProps } from "@/lib/types";
-import WorkflowLoading from "./workflow-loading";
+import WorkflowLoading from "../workflow-loading";
 
 const DiscordTrigger = ({
   loading,

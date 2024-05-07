@@ -1,6 +1,7 @@
 import { google } from "googleapis";
 import { clerkClient, currentUser } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
+import axios from "axios";
 
 export async function GET() {
   const oauth2Client = new google.auth.OAuth2(
@@ -14,9 +15,13 @@ export async function GET() {
     return NextResponse.json({ message: "User not found" });
   }
 
-  const clerkResponse = await clerkClient.users.getUserOauthAccessToken(
-    user.id,
-    "oauth_google"
+  const clerkResponse = await axios.get(
+    `https://api.clerk.com/v1/users/${user.id}/oauth_access_tokens/oauth_google`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY!}`,
+      },
+    }
   );
 
   const accessToken = clerkResponse.data[0].token;

@@ -1,8 +1,4 @@
-import {
-  clerkMiddleware,
-  createRouteMatcher,
-  ClerkMiddlewareAuth,
-} from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 
 const isProtectedRoute = createRouteMatcher([
   "/connections(.*)",
@@ -11,8 +7,11 @@ const isProtectedRoute = createRouteMatcher([
   "/settings(.*)",
   "/billing(.*)",
   "/api/payment",
-  "/api/drive-activity",
   "/api/drive",
+  "/api/drive/settings",
+  "/api/drive/watch",
+  "/api/discord",
+  "/api/slack",
 ]);
 
 export default clerkMiddleware((auth, req) => {

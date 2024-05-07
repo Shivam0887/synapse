@@ -5,7 +5,12 @@ import Home from "@/components/icons/home";
 import Payment from "@/components/icons/payment";
 import Settings from "@/components/icons/settings";
 import Workflows from "@/components/icons/workflows";
-import { Connection, ConnectionTypes, CustomNodeTypes } from "./types";
+import {
+  Connection,
+  ConnectionTypes,
+  CustomNodeTypes,
+  PropertyTypes,
+} from "./types";
 
 export const menuOptions = [
   { name: "Dashboard", Component: Home, href: "/dashboard" },
@@ -17,53 +22,28 @@ export const menuOptions = [
   { name: "Logs", Component: Logs, href: "/logs" },
 ];
 
-export const CustomNodeDefaultValues: Record<
-  string,
-  { description: string; type: CustomNodeTypes }
-> = {
-  Email: { description: "Send an email to a user", type: "Trigger" },
-  Condition: {
-    description: "Boolean operator that creates different conditions lanes.",
-    type: "Action",
-  },
-  AI: {
-    description:
-      "Use the power of AI to summarize, respond, create and much more.",
-    type: "Action",
-  },
-  Slack: { description: "Send a notification to slack", type: "Trigger" },
-  "Google Drive": {
-    description:
-      "Connect with Google drive to trigger actions or to create files and folders.",
-    type: "Trigger",
-  },
-  Notion: { description: "Create entries directly in notion.", type: "Action" },
-  "Custom Webhook": {
-    description:
-      "Connect any app that has an API key and send data to your applicaiton.",
-    type: "Action",
-  },
-  Discord: {
-    description: "Post messages to your discord server",
-    type: "Trigger",
-  },
-  "Google Calendar": {
-    description: "Create a calendar invite.",
-    type: "Trigger",
-  },
-  Trigger: {
-    description: "An event that starts the workflow.",
-    type: "Trigger",
-  },
-  Action: {
-    description: "An event that happens after the workflow begins",
-    type: "Action",
-  },
-  Wait: {
-    description: "Delay the next action step by using the wait timer.",
-    type: "Action",
-  },
-};
+export const CustomNodeDefaultValues: Record<string, { description: string }> =
+  {
+    AI: {
+      description:
+        "Use the power of AI to summarize, respond, create and much more.",
+    },
+    Slack: { description: "Send a notification to slack" },
+    "Google Drive": {
+      description:
+        "Connect with Google drive to trigger actions or to create files and folders.",
+    },
+    Notion: { description: "Create entries directly in notion." },
+    Discord: {
+      description: "Post messages to your discord server",
+    },
+    "Google Calendar": {
+      description: "Create a calendar invite.",
+    },
+    Wait: {
+      description: "Delay the next action step by using the wait timer.",
+    },
+  };
 
 export const CONNECTIONS: Record<ConnectionTypes, Connection> = {
   "Google Drive": {
@@ -75,6 +55,12 @@ export const CONNECTIONS: Record<ConnectionTypes, Connection> = {
     title: "Discord",
     description: "Connect your discord to send notification and messages",
     image: "/discord.png",
+    message: {
+      "0": "A User or Role is mentioned.",
+      "1": "A new message is posted in the text channel.",
+      "2": "A new Reaction is added to a Message.",
+      "3": "A new user has join the Discord Server.",
+    },
   },
   Notion: {
     title: "Notion",
@@ -86,5 +72,50 @@ export const CONNECTIONS: Record<ConnectionTypes, Connection> = {
     description:
       "Use slack to send notifications to team members through your own custom bot.",
     image: "/slack.png",
+    message: {
+      "0": "A new #channel is created",
+      "1": "A new file is uploaded into the public #channel.",
+      "2": "A new Reaction is added to a Message.",
+      "3": "A new message is posted to a #channel.",
+      "4": "A new user joined a #public-channel or #private-channel.",
+    },
   },
 };
+
+// Types included automatically, if present in notion db schema- created_by, created_time, last_edited_by, last_edited_time
+// Unsupported types 'cause they are highly complex and time consuming to implement- files, formula, relation, rollup, unique_id, verification
+export const messageSchema: Record<string, string> = {
+  url: "url",
+  checkbox: "checkbox",
+  number: "number",
+  email: "email",
+  title: "text",
+  status: "text",
+  select: "text",
+  multi_select: "text",
+  phone_number: "tel",
+  date: "date",
+  rich_text: "text",
+  people: "text",
+};
+
+export const databaseIdMapper = new Map<
+  string,
+  {
+    name: string;
+    type: PropertyTypes;
+  }[]
+>();
+
+export const UnsupportedTypes = new Set([
+  "last_edited_by",
+  "last_edited_time",
+  "created_by",
+  "created_time",
+  "files",
+  "relation",
+  "rollup",
+  "unique_id",
+  "formula",
+  "verification",
+]);

@@ -8,7 +8,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { TriggerProps } from "@/lib/types";
-import WorkflowLoading from "./workflow-loading";
+import WorkflowLoading from "../workflow-loading";
 
 const SlackTrigger = ({
   loading,
@@ -73,17 +73,6 @@ const SlackTrigger = ({
                 </div>
               </SelectItem>
               <Separator />
-              <SelectItem value="4" className="cursor-pointer">
-                <div className="gap-2 flex flex-col items-start">
-                  <p className="text-sm font-medium line-clamp-1">
-                    New Message Posted to Private Channel
-                  </p>
-                  <p className="text-xs text-neutral-500 text-start line-clamp-1">
-                    Triggers when a new message is posted to a specific
-                    #private-channel.
-                  </p>
-                </div>
-              </SelectItem>
               <Separator />
               <SelectItem value="4" className="cursor-pointer">
                 <div className="gap-2 flex flex-col items-start">

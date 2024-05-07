@@ -11,10 +11,23 @@ export const SlackSchema = new Schema(
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     accessToken: { type: String, unique: true },
     nodeId: { type: String, unique: true },
+    nodeType: {
+      type: String,
+      default: () => "Slack",
+    },
     channelId: { type: String, unique: true },
     webhookUrl: { type: String, unique: true },
     trigger: String,
-    template: String,
+    action: {
+      trigger: String,
+      user: String,
+      message: String,
+      mode: {
+        type: String,
+        enum: ["default", "custom"],
+        default: () => "default",
+      },
+    },
     channelName: String,
     connectionId: [
       {

@@ -3,14 +3,20 @@ import { models, model, Schema, InferSchemaType, Types } from "mongoose";
 export const NotionSchema = new Schema(
   {
     workspaceId: { type: String, unique: true },
-    databaseId: { type: String, unique: true },
     workspaceName: { type: String, required: true },
     workspaceIcon: { type: String, required: true },
     userId: { type: Schema.Types.ObjectId, ref: "User" },
     accessToken: { type: String, unique: true },
-    refreshToken: { type: String, unique: true },
     nodeId: { type: String, unique: true },
-    template: String,
+    botId: { type: String, unique: true },
+    nodeType: {
+      type: String,
+      default: () => "Notion",
+    },
+    databaseId: String,
+    pageId: String,
+    trigger: String,
+    properties: {},
     // Can have multiple source node
     connectionId: [
       {

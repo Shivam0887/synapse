@@ -23,20 +23,17 @@ export type Connection = {
   title: ConnectionTypes;
   description: string;
   image: string;
+  message?: Record<string, string>;
 };
 
 export type CustomNodeTypes =
-  | "Email"
-  | "Condition"
   | "AI"
   | "Slack"
   | "Google Drive"
   | "Notion"
-  | "Custom Webhook"
   | "Google Calendar"
-  | "Trigger"
+  | "None"
   | "Discord"
-  | "Action"
   | "Wait";
 
 export type CustomNodeDataType = {
@@ -107,3 +104,63 @@ export type TriggerProps = {
   setTrigger: React.Dispatch<React.SetStateAction<string>>;
   workspaceName: string;
 };
+
+export type ActionDataType = {
+  user: string | undefined;
+  message: string;
+  type: "default" | "custom";
+  trigger: "0" | "1" | undefined;
+};
+
+export const actionSchema = z.object({
+  user: z.string().optional(),
+  message: z.string().default("test message"),
+  type: z.enum(["custom", "default"]).default("default"),
+  trigger: z.enum(["0", "1"]),
+});
+
+export type ActionType = z.infer<typeof actionSchema>;
+
+export type ActionProps = {
+  loading: boolean;
+  actionData: ActionDataType;
+  setActionData: React.Dispatch<React.SetStateAction<ActionDataType>>;
+  defaultMessage: string;
+  workflowId: string;
+  nodeId: string;
+};
+
+export type PropertyTypes =
+  | "number"
+  | "date"
+  | "email"
+  | "checkbox"
+  | "multi_select"
+  | "people"
+  | "phone_number"
+  | "rich_text"
+  | "select"
+  | "status"
+  | "title"
+  | "url"
+  // Types included automatically, if present in notion db schema- created_by, created_time, last_edited_by, last_edited_time
+  | "last_edited_by"
+  | "last_edited_time"
+  | "created_by"
+  | "created_time"
+  // Unsupported types 'cause they are highly complex and time consuming to implement- files, formula, relation, rollup, unique_id, verification
+  | "files"
+  | "relation"
+  | "rollup"
+  | "unique_id"
+  | "formula"
+  | "verification";
+
+export type NotionDatabaseType = {
+  id: string;
+  name: string;
+  properties: {
+    name: string;
+    type: PropertyTypes;
+  }[];
+}[];

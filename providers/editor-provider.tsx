@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  EditorActions,
-  CustomNodeDataType,
-  CustomNodeTypes,
-  CustomNodeType,
-} from "@/lib/types";
+import { EditorActions, CustomNodeType } from "@/lib/types";
 import { Dispatch, createContext, useContext, useReducer } from "react";
-import { Node } from "reactflow";
 
 export type Editor = {
   nodes: CustomNodeType[];
@@ -39,11 +33,11 @@ const initialEditorState: Editor = {
       description: "",
       metadata: {},
       title: "",
-      type: "Trigger",
+      type: "None",
     },
     id: "",
     position: { x: 0, y: 0 },
-    type: "Trigger",
+    type: "None",
   },
 };
 

@@ -8,6 +8,16 @@ import { Slack } from "@/models/slack-model";
 import { User, UserType } from "@/models/user-model";
 import { currentUser } from "@clerk/nextjs/server";
 
+type SaveActionProps = {
+  user: string | undefined;
+  message: string;
+  type: "custom" | "default";
+  trigger: "0" | "1";
+  nodeId: string;
+  workflowId: string;
+  nodeType: ConnectionTypes;
+};
+
 export const getTrigger = async (
   workflowId: string,
   nodeId: string,
@@ -20,7 +30,7 @@ export const getTrigger = async (
       userId: user?.id,
     });
 
-    if (dbUser && workflowId && nodeId) {
+    if (workflowId && nodeId) {
       const Model =
         nodeType === "Discord"
           ? Discord
@@ -33,7 +43,11 @@ export const getTrigger = async (
         {
           _id: 0,
           trigger: 1,
+          action: 1,
           channelName: 1,
+          nodeType: 1,
+          workspaceName: 1,
+          databaseId: 1,
         }
       );
 
@@ -42,15 +56,21 @@ export const getTrigger = async (
           success: true,
           data: {
             trigger: response.trigger,
-            channelName: response.channelName,
+            channelName:
+              nodeType === "Notion"
+                ? response.workspaceName
+                : response.channelName,
+            action: response.action,
+            nodeType: response.nodeType,
+            databaseId: response.databaseId,
           },
         });
+    } else {
+      return JSON.stringify({
+        success: false,
+        message: "parameters are missing",
+      });
     }
-
-    return JSON.stringify({
-      success: false,
-      message: "parameters are missing",
-    });
   } catch (error: any) {
     console.log(error?.message);
     return JSON.stringify({ success: false, error: error?.message });
@@ -71,6 +91,52 @@ export const onSaveTrigger = async (
     });
 
     if (dbUser && workflowId && nodeId) {
+      const Model = nodeType === "Discord" ? Discord : Slack;
+
+      if (nodeType === "Discord" || nodeType === "Slack") {
+        await Model.findOneAndUpdate(
+          { userId: dbUser?._id, workflowId, nodeId },
+          {
+            $set: {
+              trigger,
+            },
+          }
+        );
+      }
+
+      return JSON.stringify({
+        success: true,
+        data: "trigger saved successfully!",
+      });
+    }
+
+    return JSON.stringify({
+      success: false,
+      message: "parameters are missing",
+    });
+  } catch (error: any) {
+    console.log(error?.message);
+    return JSON.stringify({ success: false, error: error?.message });
+  }
+};
+
+export const onSaveAction = async ({
+  message,
+  nodeId,
+  nodeType,
+  trigger,
+  type: mode,
+  user,
+  workflowId,
+}: SaveActionProps) => {
+  try {
+    ConnectToDB();
+    const loggedUser = await currentUser();
+    const dbUser = await User.findOne<UserType>({
+      userId: loggedUser?.id,
+    });
+
+    if (dbUser && workflowId && nodeId) {
       const Model =
         nodeType === "Discord"
           ? Discord
@@ -78,26 +144,81 @@ export const onSaveTrigger = async (
           ? Notion
           : Slack;
 
-      const response = await Model.findOneAndUpdate(
+      await Model.findOneAndUpdate(
         { userId: dbUser?._id, workflowId, nodeId },
         {
           $set: {
-            trigger,
+            action: {
+              message,
+              mode,
+              user,
+              trigger,
+            },
           },
         }
       );
 
-      if (response)
-        return JSON.stringify({
-          success: true,
-          data: "trigger saved successfully!",
-        });
+      return JSON.stringify({
+        success: true,
+        message: "action saved successfully!",
+      });
     }
 
     return JSON.stringify({
       success: false,
       message: "parameters are missing",
     });
+  } catch (error: any) {
+    console.log(error?.message);
+    return JSON.stringify({ success: false, error: error?.message });
+  }
+};
+
+export const onSaveNotionAction = async ({
+  nodeId,
+  trigger,
+  databaseId,
+  pageId,
+  properties,
+  workflowId,
+}: {
+  nodeId: string;
+  trigger: string;
+  databaseId?: string;
+  pageId?: string;
+  properties: any;
+  workflowId: string;
+}) => {
+  try {
+    ConnectToDB();
+    const loggedUser = await currentUser();
+    const dbUser = await User.findOne<UserType>({
+      userId: loggedUser?.id,
+    });
+
+    if (nodeId && workflowId && trigger) {
+      await Notion.findOneAndUpdate(
+        { userId: dbUser?._id, nodeId, workflowId },
+        {
+          $set: {
+            databaseId,
+            pageId,
+            trigger,
+            properties,
+          },
+        }
+      );
+
+      return JSON.stringify({
+        success: true,
+        data: "action saved successfully!",
+      });
+    } else {
+      return JSON.stringify({
+        success: false,
+        message: "parameters are missing",
+      });
+    }
   } catch (error: any) {
     console.log(error?.message);
     return JSON.stringify({ success: false, error: error?.message });

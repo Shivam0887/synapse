@@ -1,7 +1,6 @@
 import React from "react";
 import { ConnectionTypes, CustomNodeTypes, NodeType, Option } from "./types";
 import { ConnectionProviderProps } from "@/providers/connections-provider";
-import { EditorState } from "@/providers/editor-provider";
 import { getDiscordMetaData } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 import { getNotionMetaData } from "@/app/(main)/(routes)/connections/_actions/notion-action";
 import {
@@ -41,40 +40,14 @@ export const onContentChange = (
   }
 };
 
-export const onAddTemplate = (
-  nodeConnection: ConnectionProviderProps,
-  nodeType: NodeType,
-  template: string
-) => {
-  const { setDiscordNode, setSlackNode, setNotionNode } = nodeConnection;
-  if (nodeType === "slackNode") {
-    setSlackNode((prev) => ({
-      ...prev,
-      content: `${prev.content} ${template}`,
-    }));
-  } else if (nodeType === "discordNode") {
-    setDiscordNode((prev) => ({
-      ...prev,
-      content: `${prev.content} ${template}`,
-    }));
-  } else if (nodeType === "notionNode") {
-    setNotionNode((prev) => ({
-      ...prev,
-      content: `${prev.content} ${template}`,
-    }));
-  }
-};
-
 export const onConnections = async (
   nodeConnection: ConnectionProviderProps,
-  editorState: EditorState,
-  workflowId: string
+  nodeId: string,
+  workflowId: string,
+  nodeType: ConnectionTypes
 ) => {
-  if (editorState.editor.selectedNode.data.title == "Discord") {
-    const res = await getDiscordMetaData(
-      workflowId,
-      editorState.editor.selectedNode.id
-    );
+  if (nodeType === "Discord") {
+    const res = await getDiscordMetaData(workflowId, nodeId);
     if (res) {
       const connection = JSON.parse(res);
       nodeConnection.setDiscordNode({
@@ -85,11 +58,8 @@ export const onConnections = async (
         channelName: connection.channelName,
       });
     }
-  } else if (editorState.editor.selectedNode.data.title == "Notion") {
-    const res = await getNotionMetaData(
-      workflowId,
-      editorState.editor.selectedNode.id
-    );
+  } else if (nodeType === "Notion") {
+    const res = await getNotionMetaData(workflowId, nodeId);
     if (res) {
       const connection = JSON.parse(res);
       nodeConnection.setNotionNode({
@@ -99,11 +69,8 @@ export const onConnections = async (
         workspaceName: connection.workspaceName,
       });
     }
-  } else if (editorState.editor.selectedNode.data.title == "Slack") {
-    const res = await getSlackMetaData(
-      workflowId,
-      editorState.editor.selectedNode.id
-    );
+  } else if (nodeType === "Slack") {
+    const res = await getSlackMetaData(workflowId, nodeId);
     if (res) {
       const connection = JSON.parse(res);
       nodeConnection.setSlackNode({
@@ -127,5 +94,77 @@ export const fetchBotSlackChannels = async (
   const channels = await listBotChannels(token);
   if (channels) {
     setSlackChannels(channels);
+  }
+};
+
+export const getPropertyItem = (type: { [x: string]: string }) => {
+  if (type["title"]) {
+    return {
+      title: [
+        {
+          text: {
+            content: type["title"],
+          },
+        },
+      ],
+    };
+  } else if (type["multi_select"]) {
+    return {
+      multi_select: [{ name: type["multi_select"] }],
+    };
+  } else if (type["number"]) {
+    return {
+      number: parseInt(type["number"]),
+    };
+  } else if (type["status"]) {
+    return {
+      name: parseInt(type["number"]),
+    };
+  } else if (type["date"]) {
+    return {
+      date: {
+        start: type["date"],
+        end: null,
+      },
+    };
+  } else if (type["checkbox"]) {
+    return {
+      checkbox: JSON.parse(type["checkbox"]),
+    };
+  } else if (type["email"]) {
+    return {
+      email: type["email"],
+    };
+  } else if (type["rich_text"]) {
+    return {
+      rich_text: [
+        {
+          text: {
+            content: type["rich_text"],
+          },
+        },
+      ],
+    };
+  } else if (type["people"]) {
+    return {
+      people: [
+        {
+          object: "user",
+          id: type["people"],
+        },
+      ],
+    };
+  } else if (type["phone_number"]) {
+    return {
+      phone_number: parseInt(type["phone_number"]),
+    };
+  } else if (type["select"]) {
+    return {
+      name: parseInt(type["number"]),
+    };
+  } else {
+    return {
+      url: type["url"],
+    };
   }
 };
