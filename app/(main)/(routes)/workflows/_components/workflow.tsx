@@ -26,7 +26,10 @@ const Workflow = ({ description, id, name, publish }: WorkflowProps) => {
       workflowId: id,
       publish: checked,
     });
-    toast(response);
+    if (response) {
+      const data = JSON.parse(response);
+      toast.message(data.message);
+    }
   };
 
   return (

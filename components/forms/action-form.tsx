@@ -28,7 +28,7 @@ import {
   actionSchema,
 } from "@/lib/types";
 import { toast } from "sonner";
-import { onSaveAction } from "@/app/(main)/(routes)/connections/_actions/connection-action";
+import { getTrigger, onSaveAction } from "@/app/(main)/(routes)/connections/_actions/connection-action";
 import { useEditor } from "@/providers/editor-provider";
 
 const ActionForm = ({
@@ -40,7 +40,7 @@ const ActionForm = ({
   workflowId,
   users,
 }: ActionProps & { users: { id: string; username: string }[] }) => {
-  const { selectedNode } = useEditor().state.editor;
+  const { selectedNode, edges, nodes } = useEditor().state.editor;
   const actionForm = useForm<ActionType>({
     resolver: zodResolver(actionSchema),
     defaultValues: {
@@ -62,6 +62,25 @@ const ActionForm = ({
       toast.error("please select a user");
       return;
     }
+
+    const sourceEdge = edges.find(({ target }) => target === nodeId);
+    const sourceNode = nodes.find(({ id }) => id === sourceEdge?.source);
+
+    if(values.trigger === "0" && sourceNode && sourceNode.type === selectedNode.type){
+      const sourceTrigger = await getTrigger(workflowId, sourceNode.id, sourceNode.type as ConnectionTypes);
+      const targetTrigger = await getTrigger(workflowId, nodeId, selectedNode.type as ConnectionTypes);
+  
+      if(sourceTrigger && targetTrigger){
+        const source = (JSON.parse(sourceTrigger)).data;
+        const targetChannelId = (JSON.parse(targetTrigger)).data.channelId;
+
+        if(source.channelId === targetChannelId && source.trigger === values.trigger){
+          toast.warning('Synapse detects loop. Please change the action.')
+          return;
+        }
+      }
+    }
+
     const data = {
       user: values.user,
       message: values.type === "default" ? defaultMessage : values.message,

@@ -25,23 +25,16 @@ export const menuOptions = [
 export const CustomNodeDefaultValues: Record<string, { description: string }> =
   {
     AI: {
-      description:
-        "Use the power of AI to summarize, respond, create and much more.",
+      description: "Use the power of AI to create nodes",
     },
-    Slack: { description: "Send a notification to slack" },
+    Slack: { description: "Post/trigger messages into your slack workspace." },
     "Google Drive": {
       description:
-        "Connect with Google drive to trigger actions or to create files and folders.",
+        "Connect with Google drive to trigger changes in the files and folders.",
     },
-    Notion: { description: "Create entries directly in notion." },
+    Notion: { description: "Create new database item and page in notion." },
     Discord: {
-      description: "Post messages to your discord server",
-    },
-    "Google Calendar": {
-      description: "Create a calendar invite.",
-    },
-    Wait: {
-      description: "Delay the next action step by using the wait timer.",
+      description: "Post/trigger messages into your discord server.",
     },
   };
 

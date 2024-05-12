@@ -32,10 +32,11 @@ const SlackTrigger = ({
               <SelectItem value="0" className="cursor-pointer">
                 <div className="gap-2 flex flex-col items-start ">
                   <p className="text-sm font-medium line-clamp-1">
-                    New Channel
+                    New Message Posted to Channel
                   </p>
                   <p className="text-xs text-neutral-500 text-start line-clamp-1">
-                    Triggers whenever a new #channel is created.
+                    Triggers when a new message is posted to a specific #channel
+                    you choose.
                   </p>
                 </div>
               </SelectItem>
@@ -64,11 +65,10 @@ const SlackTrigger = ({
               <SelectItem value="3" className="cursor-pointer">
                 <div className="gap-2 flex flex-col items-start">
                   <p className="text-sm font-medium line-clamp-1">
-                    New Message Posted to Channel
+                    New Channel
                   </p>
                   <p className="text-xs text-neutral-500 text-start line-clamp-1">
-                    Triggers when a new message is posted to a specific #channel
-                    you choose.
+                    Triggers whenever a new #channel is created.
                   </p>
                 </div>
               </SelectItem>

@@ -31,10 +31,8 @@ export type CustomNodeTypes =
   | "Slack"
   | "Google Drive"
   | "Notion"
-  | "Google Calendar"
   | "None"
-  | "Discord"
-  | "Wait";
+  | "Discord";
 
 export type CustomNodeDataType = {
   title: string;

@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    ConnectToDB();
     const dbUser = await User.findOne<UserType>({ userId: user.id });
 
     const response = await axios.post(

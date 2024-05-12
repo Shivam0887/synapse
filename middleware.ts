@@ -12,6 +12,7 @@ const isProtectedRoute = createRouteMatcher([
   "/api/drive/watch",
   "/api/discord",
   "/api/slack",
+  "/api/ai/google",
 ]);
 
 export default clerkMiddleware((auth, req) => {

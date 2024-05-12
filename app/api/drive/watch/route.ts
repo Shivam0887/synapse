@@ -40,6 +40,8 @@ export async function GET(req: NextRequest) {
       auth: oauth2Client,
     });
 
+    ConnectToDB();
+
     const dbUser = await User.findOne({ userId: user?.id }, { _id: 1 });
     const result = await Workflow.findOne<WorkflowType>(
       { _id: workflowId, userId: dbUser?._id },

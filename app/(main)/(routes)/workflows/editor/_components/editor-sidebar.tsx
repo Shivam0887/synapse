@@ -27,11 +27,7 @@ import ServiceTrigger from "./triggers/service-trigger";
 import ServiceConnection from "./service-connection";
 import ServiceInteraction from "./service-interaction";
 
-import {
-  fetchBotSlackChannels,
-  onConnections,
-  onDrapStart,
-} from "@/lib/editor-utils";
+import { onConnections, onDrapStart } from "@/lib/editor-utils";
 import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
 import { CustomNodeDefaultValues } from "@/lib/constant";
 import ServiceAction from "./actions/service-action";

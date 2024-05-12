@@ -19,7 +19,7 @@ const DiscordTrigger = ({
 }: TriggerProps) => {
   return (
     <div className="relative">
-      {loading ? (
+      {loading || !trigger ? (
         <WorkflowLoading />
       ) : (
         <>
@@ -32,10 +32,11 @@ const DiscordTrigger = ({
               <SelectItem value="0" className="cursor-pointer">
                 <div className="gap-2 flex flex-col items-start ">
                   <p className="text-sm font-medium line-clamp-1">
-                    New Mention
+                    New Message Posted to Channel
                   </p>
                   <p className="text-xs text-neutral-500 text-start line-clamp-1">
-                    Triggers when a User or Role is mentioned.
+                    Triggers when a new message is posted to a specific text
+                    channel.
                   </p>
                 </div>
               </SelectItem>
@@ -43,11 +44,10 @@ const DiscordTrigger = ({
               <SelectItem value="1" className="cursor-pointer">
                 <div className="gap-2 flex flex-col items-start">
                   <p className="text-sm font-medium line-clamp-1">
-                    New Message Posted to Channel
+                    New Mention
                   </p>
                   <p className="text-xs text-neutral-500 text-start line-clamp-1">
-                    Triggers when a new message is posted to a specific text
-                    channel.
+                    Triggers when a User or Role is mentioned.
                   </p>
                 </div>
               </SelectItem>

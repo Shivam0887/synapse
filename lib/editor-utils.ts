@@ -3,10 +3,7 @@ import { ConnectionTypes, CustomNodeTypes, NodeType, Option } from "./types";
 import { ConnectionProviderProps } from "@/providers/connections-provider";
 import { getDiscordMetaData } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 import { getNotionMetaData } from "@/app/(main)/(routes)/connections/_actions/notion-action";
-import {
-  getSlackMetaData,
-  listBotChannels,
-} from "@/app/(main)/(routes)/connections/_actions/slack-action";
+import { getSlackMetaData } from "@/app/(main)/(routes)/connections/_actions/slack-action";
 
 export const onDrapStart = (
   e: React.DragEvent<HTMLDivElement>,
@@ -87,15 +84,15 @@ export const onConnections = async (
   }
 };
 
-export const fetchBotSlackChannels = async (
-  token: string,
-  setSlackChannels: React.Dispatch<React.SetStateAction<Option[]>>
-) => {
-  const channels = await listBotChannels(token);
-  if (channels) {
-    setSlackChannels(channels);
-  }
-};
+// export const fetchBotSlackChannels = async (
+//   token: string,
+//   setSlackChannels: React.Dispatch<React.SetStateAction<Option[]>>
+// ) => {
+//   const channels = await listBotChannels(token);
+//   if (channels) {
+//     setSlackChannels(channels);
+//   }
+// };
 
 export const getPropertyItem = (type: { [x: string]: string }) => {
   if (type["title"]) {

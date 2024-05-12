@@ -11,6 +11,7 @@
   "dependencies": {
     "@clerk/nextjs": "^5.0.6",
     "@clerk/themes": "^1.7.11",
+    "@google/generative-ai": "^0.11.1",
     "@hookform/resolvers": "^3.3.4",
     "@notionhq/client": "^2.2.15",
     "@radix-ui/react-accordion": "^1.1.2",
@@ -36,6 +37,7 @@
     "framer-motion": "^11.0.22",
     "googleapis": "^134.0.0",
     "lucide-react": "^0.363.0",
+    "marked": "^12.0.2",
     "mongoose": "^8.2.4",
     "next": "14.2.3",
     "next-themes": "^0.3.0",
@@ -45,6 +47,7 @@
     "react-hook-form": "^7.51.3",
     "react-icons": "^5.0.1",
     "react-resizable-panels": "^2.0.16",
+    "react-textarea-autosize": "^8.5.3",
     "reactflow": "^11.10.4",
     "sonner": "^1.4.41",
     "tailwind-merge": "^2.2.2",

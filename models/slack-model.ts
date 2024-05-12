@@ -29,12 +29,26 @@ export const SlackSchema = new Schema(
       },
     },
     channelName: String,
-    connectionId: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Connection",
-      },
-    ],
+    connections: {
+      discordId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Discord",
+        },
+      ],
+      notionId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Notion",
+        },
+      ],
+      slackId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Slack",
+        },
+      ],
+    },
     workflowId: {
       type: Schema.Types.ObjectId,
       ref: "Workflow",
@@ -48,4 +62,4 @@ SlackSchema.index({ nodeId: 1 });
 export type SlackType = InferSchemaType<typeof SlackSchema> & {
   _id?: Types.ObjectId;
 };
-export const Slack = models.Slack || model("Slack", SlackSchema);
+export const Slack = models?.Slack || model("Slack", SlackSchema);

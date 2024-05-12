@@ -1,12 +1,14 @@
 "use server";
 
 import ConnectToDB from "@/lib/connectToDB";
-import { ConnectionTypes } from "@/lib/types";
+import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
 import { Discord } from "@/models/discord-model";
 import { Notion } from "@/models/notion-model";
 import { Slack } from "@/models/slack-model";
 import { User, UserType } from "@/models/user-model";
-import { currentUser } from "@clerk/nextjs/server";
+import { Workflow } from "@/models/workflow-model";
+import { currentUser, clerkClient } from "@clerk/nextjs/server";
+import axios from "axios";
 
 type SaveActionProps = {
   user: string | undefined;
@@ -16,6 +18,20 @@ type SaveActionProps = {
   nodeId: string;
   workflowId: string;
   nodeType: ConnectionTypes;
+};
+
+const getDriveInfo = async () => {
+  const user = await currentUser();
+  const clerkResponse = await axios.get(
+    `https://api.clerk.com/v1/users/${user?.id}/oauth_access_tokens/oauth_google`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.CLERK_SECRET_KEY!}`,
+      },
+    }
+  );
+
+  return clerkResponse?.data[0].token?.length;
 };
 
 export const getTrigger = async (
@@ -60,9 +76,9 @@ export const getTrigger = async (
               nodeType === "Notion"
                 ? response.workspaceName
                 : response.channelName,
+            channelId: nodeType === "Notion" ? "" : response.channelId,
             action: response.action,
             nodeType: response.nodeType,
-            databaseId: response.databaseId,
           },
         });
     } else {
@@ -217,6 +233,117 @@ export const onSaveNotionAction = async ({
       return JSON.stringify({
         success: false,
         message: "parameters are missing",
+      });
+    }
+  } catch (error: any) {
+    console.log(error?.message);
+    return JSON.stringify({ success: false, error: error?.message });
+  }
+};
+
+export const addConnection = async ({
+  sourceId,
+  targetId,
+  sourceNodeType,
+  targetNodeType,
+  workflowId,
+  type,
+}: {
+  sourceId: string;
+  targetId: string;
+  sourceNodeType: CustomNodeTypes;
+  targetNodeType: CustomNodeTypes;
+  workflowId: string;
+  type: "add" | "remove";
+}) => {
+  try {
+    if (sourceId && targetId && sourceNodeType && targetNodeType) {
+      if (sourceNodeType !== "AI" && sourceNodeType !== "None") {
+        ConnectToDB();
+        const SourceModel =
+          sourceNodeType === "Discord"
+            ? Discord
+            : sourceNodeType === "Notion"
+            ? Notion
+            : sourceNodeType === "Slack"
+            ? Slack
+            : Workflow;
+
+        const Target =
+          targetNodeType === "Discord"
+            ? { Model: Discord, type: "connections.discordId" }
+            : targetNodeType === "Notion"
+            ? { Model: Notion, type: "connections.notionId" }
+            : { Model: Slack, type: "connections.slackId" };
+
+        const target = await Target.Model.findOne(
+          { workflowId, nodeId: targetId },
+          { _id: 1 }
+        );
+
+        if (!target) {
+          throw new Error(
+            `please connect to your ${targetNodeType} account to continue...`
+          );
+        }
+
+        //What is the type of source node?
+        if (sourceNodeType === "Google Drive") {
+          const isGoogleDriveConnected = await getDriveInfo();
+          if (!isGoogleDriveConnected) {
+            throw new Error(
+              `please connect to your Google Drive account. Give access to Google Drive while login.`
+            );
+          }
+
+          const field = `googleDriveWatchTrigger.${Target.type}`;
+
+          //Does the edge added or removed?
+          if (type === "add") {
+            await Workflow.findByIdAndUpdate(workflowId, {
+              $push: {
+                [field]: target?._id,
+              },
+            });
+          } else {
+            await Workflow.findByIdAndUpdate(workflowId, {
+              $pull: {
+                [field]: target?._id,
+              },
+            });
+          }
+        } else {
+          const source = await SourceModel.findOne(
+            { workflowId, nodeId: sourceId },
+            { _id: 1 }
+          );
+
+          if (!source) {
+            throw new Error(
+              `please connect to your ${sourceNodeType} account to continue...`
+            );
+          }
+
+          //Does the edge added or removed?
+          if (type === "add") {
+            await SourceModel.findOneAndUpdate({
+              $push: {
+                [Target.type]: target?._id,
+              },
+            });
+          } else {
+            await SourceModel.findOneAndUpdate({
+              $pull: {
+                [Target.type]: target?._id,
+              },
+            });
+          }
+        }
+      }
+    } else {
+      return JSON.stringify({
+        success: false,
+        message: "failed to add a connection edge",
       });
     }
   } catch (error: any) {

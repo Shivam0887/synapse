@@ -20,12 +20,6 @@ export const UserSchema = new Schema(
       type: String,
       default: () => "10",
     },
-    connectionId: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Connection",
-      },
-    ],
     workflowId: [
       {
         type: Schema.Types.ObjectId,
@@ -42,4 +36,4 @@ UserSchema.index({ userId: 1 }, { unique: true });
 export type UserType = InferSchemaType<typeof UserSchema> & {
   _id?: Types.ObjectId;
 };
-export const User = models.User || model("User", UserSchema);
+export const User = models?.User || model("User", UserSchema);

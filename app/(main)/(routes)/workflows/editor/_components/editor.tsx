@@ -1,6 +1,6 @@
 "use client";
 
-import { ConnectionTypes, CustomNodeType, CustomNodeTypes } from "@/lib/types";
+import { CustomNodeType, CustomNodeTypes } from "@/lib/types";
 import { useEditor } from "@/providers/editor-provider";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
@@ -31,6 +31,7 @@ import WorkflowLoading from "./workflow-loading";
 import FlowInstance from "./flow-instance";
 import EditorSidebar from "./editor-sidebar";
 import { deleteNode, onGetNodesEdges } from "../../_actions/workflow-action";
+import { addConnection } from "../../../connections/_actions/connection-action";
 
 type CustomEdgeType = { id: string; source: string; target: string };
 
@@ -88,6 +89,8 @@ const Editor = () => {
       };
 
       reactFlowInstance.setNodes((nodes) => nodes.concat(newNode));
+
+      toast.warning(<p>save the workflow after node insertion</p>);
     },
     [reactFlowInstance]
   );
@@ -117,8 +120,12 @@ const Editor = () => {
       const response = await deleteNode(editorId, nodeId, nodeType!);
       if (response) {
         const data = JSON.parse(response);
-        if (data.success) toast.success(data.data);
-        else {
+        if (data.success) {
+          toast.success(data.data);
+          setTimeout(() => {
+            toast.warning(<p>save the workflow after node deletion</p>);
+          }, 1000);
+        } else {
           if (data.message) toast.message(data.message);
           else toast.error(data.error);
         }
@@ -128,14 +135,94 @@ const Editor = () => {
   );
 
   const onEdgesChange = useCallback(
-    (changes: EdgeChange[]) =>
-      setEdges((edges) => applyEdgeChanges(changes, edges)),
-    [setEdges]
+    (changes: EdgeChange[]) => {
+      setEdges((edges) => applyEdgeChanges(changes, edges));
+
+      if (changes[0].type === "remove") {
+        const edgeId = changes[0].id;
+        const edge = edges.find((edge) => edge.id === edgeId);
+        const sourceNodeType = nodes.find((node) => node.id === edge?.source)
+          ?.data.type;
+        const targetNodeType = nodes.find((node) => node.id === edge?.target)
+          ?.data.type;
+
+        //saving the edge connection changes in DB.
+        if (sourceNodeType && targetNodeType && edge?.source && edge?.target) {
+          addConnection({
+            sourceId: edge.source,
+            targetId: edge.target,
+            sourceNodeType,
+            targetNodeType,
+            workflowId: editorId,
+            type: "remove",
+          })
+            .then((response) => {
+              if (response) {
+                const data = JSON.parse(response);
+                if (!data.success) {
+                  if (data.message) toast.message(data.message);
+                  else {
+                    toast.error(data.error);
+                  }
+                }
+              }
+            })
+            .catch((error: any) => {
+              toast.error(error?.messsage);
+            });
+        }
+      }
+    },
+    [setEdges, nodes, edges, editorId]
   );
 
   const onConnect = useCallback(
-    (connection: Connection) => setEdges((edges) => addEdge(connection, edges)),
-    [setEdges]
+    (connection: Connection) => {
+      const sourceNodeType = nodes.find((node) => node.id === connection.source)
+        ?.data.type;
+      const targetNodeType = nodes.find((node) => node.id === connection.target)
+        ?.data.type;
+
+      setEdges((edges) => addEdge(connection, edges));
+
+      //saving the edge connection changes in DB.
+      if (
+        sourceNodeType &&
+        targetNodeType &&
+        connection.source &&
+        connection.target
+      ) {
+        addConnection({
+          sourceId: connection.source,
+          targetId: connection.target,
+          sourceNodeType,
+          targetNodeType,
+          workflowId: editorId,
+          type: "add",
+        })
+          .then((response) => {
+            if (response) {
+              const data = JSON.parse(response);
+              if (!data.success) {
+                if (data.message) toast.message(data.message);
+                else {
+                  toast.error(data.error);
+                  onEdgesChange([
+                    {
+                      type: "remove",
+                      id: `reactflow__edge-${connection.source}-${connection.target}`,
+                    },
+                  ]);
+                }
+              }
+            }
+          })
+          .catch((error: any) => {
+            toast.error(error?.messsage);
+          });
+      }
+    },
+    [setEdges, editorId, nodes, onEdgesChange]
   );
 
   const onClick = (e: React.MouseEvent<HTMLDivElement> | undefined) => {

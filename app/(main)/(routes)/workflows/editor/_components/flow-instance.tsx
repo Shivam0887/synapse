@@ -22,7 +22,9 @@ type currentWorkflowType = {
 const FlowInstance = ({ children }: FlowInstanceProps) => {
   const { editorId } = useParams() as { editorId: string };
   const { nodes, edges } = useEditor().state.editor;
-  const [currentWorkflow, setCurrentWorkflow] = useState<currentWorkflowType[]>([]);
+  const [currentWorkflow, setCurrentWorkflow] = useState<currentWorkflowType[]>(
+    []
+  );
 
   const [isPublished, setIsPublished] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -48,9 +50,12 @@ const FlowInstance = ({ children }: FlowInstanceProps) => {
       publish: !isPublished,
     });
 
-    setIsPublished(!isPublished);
+    const data = response ? JSON.parse(response) : "";
+
+    setIsPublished(!!data?.success);
     setIsPublishing(false);
-    toast(response);
+
+    if (data.message) toast(data.message);
   };
 
   useEffect(() => {

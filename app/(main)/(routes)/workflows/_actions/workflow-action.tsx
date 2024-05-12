@@ -2,13 +2,19 @@
 
 import ConnectToDB from "@/lib/connectToDB";
 import { ConnectionTypes, CustomNodeTypes, Option } from "@/lib/types";
-import { Discord } from "@/models/discord-model";
-import { Notion } from "@/models/notion-model";
-import { Slack } from "@/models/slack-model";
+import { Discord, DiscordType } from "@/models/discord-model";
+import { Notion, NotionType } from "@/models/notion-model";
+import { Slack, SlackType } from "@/models/slack-model";
 import { User, UserType } from "@/models/user-model";
 import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+
+type WorkflowWithNodes = Omit<WorkflowType, 'discordId' | 'slackId' | 'notionId'> & {
+  discordId: DiscordType[],
+  notionId: NotionType[],
+  slackId: SlackType[]
+}
 
 export const createWorkflow = async ({
   name,
@@ -107,28 +113,60 @@ export const onPublishWorkflow = async ({
   workflowId: string;
   publish: boolean;
 }) => {
-  const user = await currentUser();
   try {
+    const user = await currentUser();
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
 
-    await Workflow.findOneAndUpdate(
-      { _id: workflowId, userId: dbUser?._id },
-      {
-        $set: {
-          publish,
-        },
+    const workflow = await Workflow.findById<WorkflowWithNodes>(workflowId, { discordId: 1, slackId: 1, notionId: 1, googleDriveWatchTrigger: 1})
+    .populate({
+      path: 'discordId',
+      model: Discord,
+      select: "_id trigger action nodeId"
+    })
+    .populate({
+      path: 'slackId',
+      model: Slack,
+      select: "_id trigger action nodeId"
+    })
+    .populate({
+      path: 'notionId',
+      model: Notion,
+      select: "_id trigger nodeId"
+    });
+
+    if(workflow){
+      if(!workflow.googleDriveWatchTrigger?.isListening){
+        return JSON.stringify({success: false, message: "please set the trigger for Google Drive node"});
       }
-    );
 
-    revalidatePath("/workflows");
+      const discordInstance = workflow.discordId.find(({ action }) => (!action?.trigger || !action.trigger.length))
+      if(discordInstance) return JSON.stringify({success: false, message: `please set the action for Discord node with id ${discordInstance.nodeId}`});
 
-    return publish
+      const slackInstance = workflow.slackId.find(({ action }) => (!action?.trigger || !action.trigger.length));
+      if(slackInstance) return JSON.stringify({success: false, message: `please set the action for Slack node with id ${slackInstance.nodeId}`})
+
+      const notionInstance = workflow.notionId.find(({ trigger }) => (!trigger || !trigger.length))
+      if(notionInstance) return JSON.stringify({sucees: false, message: `please set the action for Notion node with id ${notionInstance.nodeId}`});
+      
+      await Workflow.findOneAndUpdate(
+        { _id: workflowId, userId: dbUser?._id },
+        {
+          $set: {
+            publish,
+          },
+        }
+      );
+      
+      revalidatePath(`/workflows/editor/${workflowId}`);
+    }
+
+    return JSON.stringify({success: publish, message: publish
       ? "Workflow published successfully!"
-      : "Workflow unpublished successfully!";
+      : "Workflow unpublished successfully!"});
   } catch (error: any) {
     console.log(error?.message);
-    return "Failed to publish the workflow.";
+    return JSON.stringify({success: false, message:"Failed to publish the workflow."});
   }
 };
 
@@ -156,20 +194,24 @@ export const getGoogleListener = async (workflowId: string) => {
 
 export const getWorkflowById = async (flowId: string) => {
   if (flowId) {
-    ConnectToDB();
-    const user = await currentUser();
+    try {
+      ConnectToDB();
+      const user = await currentUser();
 
-    const dbUser = await User.findOne({ userId: user?.id });
+      const dbUser = await User.findOne({ userId: user?.id });
 
-    if (dbUser) {
-      const workflow = await Workflow.findOne(
-        { _id: flowId, userId: dbUser?._id },
-        { _id: 0, publish: 1 }
-      );
+      if (dbUser) {
+        const workflow = await Workflow.findOne(
+          { _id: flowId, userId: dbUser?._id },
+          { _id: 0, publish: 1 }
+        );
 
-      if (workflow) {
-        return workflow.publish as boolean;
+        if (workflow) {
+          return workflow.publish as boolean;
+        }
       }
+    } catch (error: any) {
+      console.log(error?.message);
     }
   }
 

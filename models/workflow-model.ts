@@ -20,7 +20,7 @@ export const WorkflowSchema = new Schema(
     publish: { type: Boolean, default: () => false },
     description: { type: String, required: true },
     selectedNodeId: { type: String, unique: true },
-    selectedNodeType: { type: String, unique: true },
+    selectedNodeType: String,
 
     // a workspace can have multiple node except googleDrive
     discordId: [
@@ -57,10 +57,7 @@ export const WorkflowSchema = new Schema(
         type: String,
         enum: ["true", "false"],
       },
-      folderId: {
-        type: String,
-        unique: true,
-      },
+      folderId: String,
       supportedAllDrives: {
         type: String,
         enum: ["true", "false"],
@@ -73,24 +70,37 @@ export const WorkflowSchema = new Schema(
         type: String,
         enum: ["true", "false"],
       },
-      fileId: {
-        type: String,
-        unique: true,
-      },
-      channelId: {
-        // channelId that is currently viewed for changes
-        type: String,
-        unique: true,
-      },
+      fileId: String,
+      channelId: String,
       expiresAt: Number,
       resourceUri: String,
       resourceId: String,
+      connections: {
+        discordId: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "Discord",
+          },
+        ],
+        notionId: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "Notion",
+          },
+        ],
+        slackId: [
+          {
+            type: Schema.Types.ObjectId,
+            ref: "Slack",
+          },
+        ],
+      },
     },
   },
   { timestamps: true }
 );
 
-WorkflowSchema.index({ userId: 1 });
+// WorkflowSchema.index({ userId: 1 });
 
 export type WorkflowType = InferSchemaType<typeof WorkflowSchema> & {
   _id: Types.ObjectId;

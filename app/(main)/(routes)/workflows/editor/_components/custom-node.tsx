@@ -11,6 +11,7 @@ import CustomNodeIcon from "./custom-node-icon";
 import CustomHandle from "./custom-handle";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -20,18 +21,40 @@ import { cn } from "@/lib/utils";
 import { usePathname } from "next/navigation";
 import { updateNodeId } from "../../_actions/workflow-action";
 import { toast } from "sonner";
+import { z } from "zod";
+import { SubmitErrorHandler, SubmitHandler, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Form, FormControl, FormField, FormItem } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import axios from "axios";
+import { v4 as uuid } from "uuid";
 
 type CustomNodeProps = {
   data: CustomNodeDataType;
   selected?: boolean;
 };
 
+const formSchema = z.object({
+  message: z.string().min(20),
+});
+
+type FormType = z.infer<typeof formSchema>;
+
 const CustomNode = ({ data, selected }: CustomNodeProps) => {
   const { dispatch, state } = useEditor();
+  const { id } = state.editor.selectedNode;
   const nodeId = useNodeId();
   const workflowId = usePathname().split("/").pop()!;
 
   const logo = useMemo(() => <CustomNodeIcon type={data.type} />, [data]);
+
+  const form = useForm<FormType>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      message: "",
+    },
+  });
 
   const onNodeIdUpdate = async (nodeType: CustomNodeTypes) => {
     const response = await updateNodeId(workflowId, nodeId!, nodeType);
@@ -42,9 +65,52 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
     }
   };
 
+  const onSubmit: SubmitHandler<FormType> = async ({ message }) => {
+    try {
+      const response = await axios.post(
+        "/api/ai/google",
+        { prompt: message },
+        { headers: { "Content-Type": "application/json" } }
+      );
+      if (response) {
+        const raw = JSON.parse(response.data.data);
+        if (Array.isArray(raw?.nodes) && Array.isArray(raw?.edges)) {
+          const nodes = raw.nodes.map((node: any) => ({
+            ...node,
+            id: uuid(),
+          }));
+
+          const edges = raw.edges.map((edge: any) => {
+            const sourceIndex = edge.source.charCodeAt(6) - 48;
+            const targetIndex = edge.target.charCodeAt(6) - 48;
+
+            console.log({
+              source: nodes[sourceIndex],
+              target: nodes[targetIndex],
+            });
+
+            return {
+              ...edge,
+              id: uuid(),
+            };
+          });
+
+          console.log(nodes, edges);
+        }
+      }
+    } catch (error: any) {
+      console.log(error);
+      toast.error(error?.message);
+    }
+  };
+
+  const onError: SubmitErrorHandler<FormType> = (error) => {
+    if (error?.message?.message) toast.error(error.message.message);
+  };
+
   return (
     <div className={`${selected ? "border border-blue-600 rounded-lg" : ""}`}>
-      {data.type !== "Google Drive" && (
+      {!(data.type === "Google Drive" || data.type === "AI") && (
         <CustomHandle
           position={Position.Top}
           type="target"
@@ -56,12 +122,15 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
         onClick={(e) => {
           e.stopPropagation();
           const node = state.editor.nodes.find((node) => node.id === nodeId);
-          if (node && node.type) {
+          if (node && node.type && id !== node.id) {
             onNodeIdUpdate(node.type);
             dispatch({ type: "SELECTED_ELEMENT", payload: { node } });
           }
         }}
-        className="relative h-auto max-w-[400px] dark:border-muted-foreground/70"
+        className={cn(
+          "relative h-auto max-w-[300px] dark:border-muted-foreground/70",
+          { "min-w-[800px]": data.type === "AI" }
+        )}
       >
         <CardHeader className="flex flex-row items-center gap-4 mt-5">
           <div>{logo}</div>
@@ -76,6 +145,43 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
           </div>
         </CardHeader>
 
+        <CardContent>
+          {data.type === "AI" && (
+            <div className="space-y-5">
+              <p className="text-sm">
+                <span className="p-2 rounded-md bg-red-600">Warning</span>{" "}
+                Already created workflow will be erased.
+              </p>
+              <Form {...form}>
+                <form
+                  className="space-y-3"
+                  onSubmit={form.handleSubmit(onSubmit, onError)}
+                >
+                  <FormField
+                    control={form.control}
+                    name="message"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Textarea
+                            {...field}
+                            minRows={10}
+                            className="resize-none"
+                            placeholder="Google Drive is connected to slack, slack is connected to discord, and so on."
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" variant="secondary">
+                    Create workflow
+                  </Button>
+                </form>
+              </Form>
+            </div>
+          )}
+        </CardContent>
+
         <Badge variant="secondary" className="absolute right-2 top-2">
           {data.type}
         </Badge>
@@ -89,11 +195,9 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
         />
       </Card>
 
-      <CustomHandle
-        type="source"
-        position={Position.Bottom}
-        id="bottomCenter"
-      />
+      {!(data.type === "AI" || data.type === "Notion") && (
+        <CustomHandle type="source" position={Position.Bottom} />
+      )}
     </div>
   );
 };

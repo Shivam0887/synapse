@@ -21,16 +21,49 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
   const [trigger, setTrigger] = useState("");
   const [workspaceName, setWorkspaceName] = useState("");
   const [loading, setLoading] = useState(false);
-  const { selectedNode } = useEditor().state.editor;
-  const [databaseId, setDatabaseId] = useState<string>("");
+  const { selectedNode, edges, nodes } = useEditor().state.editor;
 
   const onSave = async () => {
+    const targetEdges = edges.filter((edge) => edge.source === selectedNode.id);
+    const targetNodes = nodes.filter(({ id, data: { type } }) => {
+      return (
+        type === selectedNode.type &&
+        targetEdges.some((edge) => edge.target === id)
+      );
+    });
+
+    const sourceNodeTrigger = await getTrigger(
+      workflowId,
+      selectedNode.id,
+      selectedNode.type! as ConnectionTypes
+    );
+
+    const targetTrigger = await Promise.all(
+      targetNodes.map(async ({ id, type }) => {
+        const result = await getTrigger(
+          workflowId,
+          id,
+          type as ConnectionTypes
+        );
+        if (result) {
+          const data = JSON.parse(result);
+          if (data.success) return ({trigger: data.data.action.trigger as string, channelId:  data.data.channelId as string});
+        }
+      })
+    );
+
+    const sourceNodeChannelId = sourceNodeTrigger ? JSON.parse(sourceNodeTrigger).data.channelId : "";
+    const isLoopExists = targetTrigger.some((data) => trigger === "0" && data?.trigger === trigger && data?.channelId === sourceNodeChannelId);
+    if (isLoopExists) {
+      toast.warning("Synapse detects a loop. Please change the trigger.");
+      return;
+    }
+
     const response = await onSaveTrigger(
       workflowId,
       selectedNode.id,
       trigger,
-      selectedNode.type! as ConnectionTypes,
-      databaseId
+      selectedNode.type! as ConnectionTypes
     );
     if (response) {
       const data = JSON.parse(response);
@@ -60,9 +93,6 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
           if (data.success) {
             setTrigger(data.data.trigger);
             setWorkspaceName(data.data.channelName);
-            if (data.data.databaseId) {
-              setDatabaseId(data.data.databaseId);
-            }
           } else {
             if (data.message) toast.message(data.message);
             else toast.error(data.error);
@@ -71,7 +101,7 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
         setLoading(false);
       })();
     }
-  }, [workflowId, selectedNode.id, selectedNode.type]);
+  }, [workflowId, selectedNode.id, selectedNode.type, edges, nodes]);
 
   return (
     <Card>

@@ -18,12 +18,26 @@ export const NotionSchema = new Schema(
     trigger: String,
     properties: {},
     // Can have multiple source node
-    connectionId: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: "Connection",
-      },
-    ],
+    connections: {
+      discordId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Discord",
+        },
+      ],
+      notionId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Notion",
+        },
+      ],
+      slackId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Slack",
+        },
+      ],
+    },
     workflowId: {
       type: Schema.Types.ObjectId,
       ref: "Workflow",

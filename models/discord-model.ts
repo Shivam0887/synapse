@@ -30,9 +30,25 @@ export const DiscordSchema = new Schema(
       },
     },
     channelName: String,
-    connectionId: {
-      type: Schema.Types.ObjectId,
-      ref: "Connection",
+    connections: {
+      discordId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Discord",
+        },
+      ],
+      notionId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Notion",
+        },
+      ],
+      slackId: [
+        {
+          type: Schema.Types.ObjectId,
+          ref: "Slack",
+        },
+      ],
     },
     workflowId: {
       type: Schema.Types.ObjectId,

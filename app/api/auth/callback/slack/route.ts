@@ -1,6 +1,6 @@
 import { User, UserType } from "@/models/user-model";
 import ConnectToDB from "@/lib/connectToDB";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Workflow } from "@/models/workflow-model";
 import { Slack } from "@/models/slack-model";
@@ -8,16 +8,19 @@ import { Slack } from "@/models/slack-model";
 export async function GET(req: NextRequest) {
   const user = await currentUser();
   const code = req.nextUrl.searchParams.get("code");
+  const error = req.nextUrl.searchParams.get("error");
+
+  if (error) {
+    return NextResponse.redirect(`http://localhost:3000/workflows`);
+  }
 
   if (!code) {
     return new NextResponse("Code not provided", { status: 400 });
   }
-  if (!user) {
-    return new NextResponse("user not authenticated", { status: 401 });
-  }
 
   try {
-    const dbUser = await User.findOne<UserType>({ userId: user.id });
+    ConnectToDB();
+    const dbUser = await User.findOne<UserType>({ userId: user?.id });
 
     const response = await fetch("https://slack.com/api/oauth.v2.access", {
       method: "POST",
@@ -39,7 +42,6 @@ export async function GET(req: NextRequest) {
       throw new Error(data.error || "Slack OAuth failed");
     }
 
-    ConnectToDB();
     const accessToken = data.access_token;
     const nodeMetaData = await Workflow.findById(dbUser?.currentWorkflowId, {
       selectedNodeId: 1,
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
 
     if (
       nodeMetaData?.selectedNodeId &&
-      nodeMetaData?.selectedNodeType === "Discord"
+      nodeMetaData?.selectedNodeType === "Slack"
     ) {
       const slack = await Slack.create({
         appId: data.app_id,
