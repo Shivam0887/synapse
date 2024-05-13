@@ -96,6 +96,14 @@ export const WorkflowSchema = new Schema(
         ],
       },
     },
+    parentTrigger: {
+      type: String,
+      default: () => "Google Drive",
+    },
+    parentId: {
+      type: String,
+      default: () => "",
+    },
   },
   { timestamps: true }
 );

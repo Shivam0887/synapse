@@ -2,7 +2,11 @@ import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import CustomNodeIcon from "./custom-node-icon";
-import { getNodeData } from "../../_actions/workflow-action";
+import {
+  changeTrigger,
+  getCurrentTrigger,
+  getNodeData,
+} from "../../_actions/workflow-action";
 
 import { useStore } from "@/providers/store-provider";
 import { useEditor } from "@/providers/editor-provider";
@@ -31,12 +35,20 @@ import { onConnections, onDrapStart } from "@/lib/editor-utils";
 import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
 import { CustomNodeDefaultValues } from "@/lib/constant";
 import ServiceAction from "./actions/service-action";
+import { Info } from "lucide-react";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import ActionTooltip from "@/components/globals/action-tooltip";
+import { Button } from "@/components/ui/button";
 
 const EditorSidebar = () => {
   const { nodes, selectedNode } = useEditor().state.editor;
   const { nodeConnection } = useNodeConnections();
   const { googleFile } = useStore();
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [parentTrigger, setParentTrigger] = useState({
+    type: "Google Drive",
+    id: "",
+  });
   const { editorId } = useParams() as { editorId: string };
   const isGoogleDriveNodeExists = nodes.some(
     ({ type }) => type === "Google Drive"
@@ -56,15 +68,6 @@ const EditorSidebar = () => {
       );
     // eslint-disable-next-line
   }, [editorId, selectedNode.id, selectedNode.type]);
-
-  // useEffect(() => {
-  //   if (nodeConnection.slackNode.slackAccessToken) {
-  //     fetchBotSlackChannels(
-  //       nodeConnection.slackNode.slackAccessToken,
-  //       setSlackChannels
-  //     );
-  //   }
-  // }, [nodeConnection, setSlackChannels]);
 
   useEffect(() => {
     if (
@@ -90,6 +93,28 @@ const EditorSidebar = () => {
       })();
     }
   }, [editorId, selectedNode.id, selectedNode.type]);
+
+  useEffect(() => {
+    (async () => {
+      const response = await getCurrentTrigger(editorId);
+      if (response) {
+        const data = JSON.parse(response);
+        setParentTrigger(data);
+      }
+    })();
+  }, [editorId]);
+
+  const onChangeTrigger = async () => {
+    const nodeType = selectedNode.type as ConnectionTypes;
+    const nodeId = selectedNode.id;
+
+    const response = await changeTrigger(editorId, nodeId, nodeType);
+    if (response) {
+      const data = JSON.parse(response);
+      setParentTrigger(data);
+      toast.success("trigger changed successfully!");
+    }
+  };
 
   return (
     <aside>
@@ -135,8 +160,35 @@ const EditorSidebar = () => {
           value="settings"
           className="h-[70vh] overflow-y-scroll flex flex-col gap-4 p-4"
         >
-          <div className="px-2 py-4 text-center text-xl font-bold">
-            {selectedNode.data.title}
+          <div className="px-2 py-4 text-center space-y-4 text-xl font-bold">
+            <p>{selectedNode.data.title}</p>
+            {!(
+              selectedNode.type === "Notion" ||
+              selectedNode.type === "None" ||
+              selectedNode.type === "AI"
+            ) && (
+              <div className="space-y-3">
+                <div className="text-sm flex flex-col justify-center text-neutral-500">
+                  <div className="flex gap-2 items-center justify-center">
+                    Current Trigger: {parentTrigger.type}
+                    <TooltipProvider>
+                      <ActionTooltip
+                        label={<Info className="w-4 h-4 cursor-pointer" />}
+                        side="bottom"
+                      >
+                        <p className="text-xs">
+                          The node which initiates the workflow.
+                        </p>
+                      </ActionTooltip>
+                    </TooltipProvider>
+                  </div>
+                  {parentTrigger.id && <p>ID:{parentTrigger.id}</p>}
+                </div>
+                <Button variant="secondary" size="sm" onClick={onChangeTrigger}>
+                  Change trigger
+                </Button>
+              </div>
+            )}
           </div>
 
           {selectedNode.type === "None" ? (

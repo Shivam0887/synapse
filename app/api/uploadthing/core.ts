@@ -20,13 +20,14 @@ export const ourFileRouter = {
     .middleware(middleware)
     .onUploadComplete(async ({ metadata, file }) => {
       ConnectToDB();
-      const updatedUser = await User.findOneAndUpdate(
+      await User.findOneAndUpdate(
         {
           userId: metadata.userId,
         },
-        { $set: { imageUrl: file.url } },
-        { new: true }
+        { $set: { localImageUrl: file.url } }
       );
+
+      return { localImageUrl: file.url };
     }),
 } satisfies FileRouter;
 

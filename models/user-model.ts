@@ -12,6 +12,7 @@ export const UserSchema = new Schema(
       required: true,
     },
     imageUrl: String,
+    localImageUrl: String,
     tier: {
       type: String,
       default: () => "Free",

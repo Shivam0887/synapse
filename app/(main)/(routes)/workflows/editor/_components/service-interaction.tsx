@@ -18,6 +18,7 @@ import axios from "axios";
 import { toast } from "sonner";
 import { getFileMetaData } from "../../../connections/_actions/google-action";
 import { Label } from "@/components/ui/label";
+import { Ghost } from "lucide-react";
 
 type ServiceInteractionProps = {
   nodeConnection: ConnectionProviderProps;
@@ -30,12 +31,7 @@ const ServiceInteraction = ({
   isConnected,
   nodeType,
 }: ServiceInteractionProps) => {
-  const {
-    googleFile,
-    setGoogleFile,
-    selectedSlackChannels,
-    setSelectedSlackChannels,
-  } = useStore();
+  const { googleFile, setGoogleFile } = useStore();
 
   const { selectedNode } = useEditor().state.editor;
   const { discordNode, slackNode, notionNode } = nodeConnection;
@@ -110,14 +106,13 @@ const ServiceInteraction = ({
         )}
 
         {selectedNode.type === "Google Drive" ? (
-          <p className="text-center mt-4">No Action.</p>
+          <div className="mt-4 flex flex-col gap-2 items-center">
+            <Ghost />
+            <p className="text-center">Not available</p>
+          </div>
         ) : (
           <div className="flex flex-col mt-3 gap-3">
-            <ActionButton
-              content={content}
-              selectedSlackChannels={selectedSlackChannels}
-              setSelectedSlackChannels={setSelectedSlackChannels}
-            />
+            <ActionButton />
           </div>
         )}
       </CardContent>

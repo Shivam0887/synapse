@@ -6,6 +6,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/providers/theme-provider";
 import ModalProvider from "@/providers/modal-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { StoreProvider } from "@/providers/store-provider";
 
 const font = DM_Sans({ subsets: ["latin"] });
 
@@ -23,7 +24,7 @@ export default function RootLayout({
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
     >
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" suppressHydrationWarning className="scroll-smooth">
         <head />
         <body className={font.className}>
           <ThemeProvider
@@ -33,7 +34,9 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <Toaster />
-            <ModalProvider>{children}</ModalProvider>
+            <ModalProvider>
+              <StoreProvider>{children}</StoreProvider>
+            </ModalProvider>
           </ThemeProvider>
         </body>
       </html>

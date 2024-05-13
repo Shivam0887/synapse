@@ -11,12 +11,12 @@ const SettingsPage = async () => {
   if (!user) return;
 
   ConnectToDB();
-  const dbUser = await User.findOne<UserType>({ userId: user.id });
+  const dbUser = await User.findOne<UserType>({ userId: user.id }, { _id: 1 });
 
   const onImageRemove = async () => {
     "use server";
     ConnectToDB();
-    await User.findByIdAndUpdate(dbUser?._id, { $set: { imageUrl: "" } });
+    await User.findByIdAndUpdate(dbUser?._id, { $set: { localImageUrl: "" } });
 
     revalidatePath("/settings");
   };
@@ -25,8 +25,6 @@ const SettingsPage = async () => {
     "use server";
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { name } });
-
-    revalidatePath("/settings");
   };
 
   return (
@@ -45,15 +43,8 @@ const SettingsPage = async () => {
             Add or update your information
           </p>
         </div>
-        <ProfilePicture
-          imageUrl={dbUser?.imageUrl}
-          onImageRemove={onImageRemove}
-        />
-        <ProfileForm
-          name={dbUser?.name}
-          email={dbUser?.email}
-          updateUserInfo={updateUserInfo}
-        />
+        <ProfilePicture onImageRemove={onImageRemove} />
+        <ProfileForm updateUserInfo={updateUserInfo} />
       </div>
     </div>
   );

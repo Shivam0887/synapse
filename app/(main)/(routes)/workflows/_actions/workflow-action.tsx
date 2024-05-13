@@ -8,13 +8,18 @@ import { Slack, SlackType } from "@/models/slack-model";
 import { User, UserType } from "@/models/user-model";
 import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { currentUser } from "@clerk/nextjs/server";
+import axios from "axios";
+import { Types } from "mongoose";
 import { revalidatePath } from "next/cache";
 
-type WorkflowWithNodes = Omit<WorkflowType, 'discordId' | 'slackId' | 'notionId'> & {
-  discordId: DiscordType[],
-  notionId: NotionType[],
-  slackId: SlackType[]
-}
+type WorkflowWithNodes = Omit<
+  WorkflowType,
+  "discordId" | "slackId" | "notionId"
+> & {
+  discordId: DiscordType[];
+  notionId: NotionType[];
+  slackId: SlackType[];
+};
 
 export const createWorkflow = async ({
   name,
@@ -118,37 +123,63 @@ export const onPublishWorkflow = async ({
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
 
-    const workflow = await Workflow.findById<WorkflowWithNodes>(workflowId, { discordId: 1, slackId: 1, notionId: 1, googleDriveWatchTrigger: 1})
-    .populate({
-      path: 'discordId',
-      model: Discord,
-      select: "_id trigger action nodeId"
+    const workflow = await Workflow.findById<WorkflowWithNodes>(workflowId, {
+      discordId: 1,
+      slackId: 1,
+      notionId: 1,
+      googleDriveWatchTrigger: 1,
     })
-    .populate({
-      path: 'slackId',
-      model: Slack,
-      select: "_id trigger action nodeId"
-    })
-    .populate({
-      path: 'notionId',
-      model: Notion,
-      select: "_id trigger nodeId"
-    });
+      .populate({
+        path: "discordId",
+        model: Discord,
+        select: "_id trigger action nodeId",
+      })
+      .populate({
+        path: "slackId",
+        model: Slack,
+        select: "_id trigger action nodeId",
+      })
+      .populate({
+        path: "notionId",
+        model: Notion,
+        select: "_id trigger nodeId",
+      });
 
-    if(workflow){
-      if(!workflow.googleDriveWatchTrigger?.isListening){
-        return JSON.stringify({success: false, message: "please set the trigger for Google Drive node"});
+    if (workflow) {
+      if (!workflow.googleDriveWatchTrigger?.isListening) {
+        return JSON.stringify({
+          success: false,
+          message: "please set the trigger for Google Drive node",
+        });
       }
 
-      const discordInstance = workflow.discordId.find(({ action }) => (!action?.trigger || !action.trigger.length))
-      if(discordInstance) return JSON.stringify({success: false, message: `please set the action for Discord node with id ${discordInstance.nodeId}`});
+      const discordInstance = workflow.discordId.find(
+        ({ action }) => !action?.trigger || !action.trigger.length
+      );
+      if (discordInstance)
+        return JSON.stringify({
+          success: false,
+          message: `please set the action for Discord node with id ${discordInstance.nodeId}`,
+        });
 
-      const slackInstance = workflow.slackId.find(({ action }) => (!action?.trigger || !action.trigger.length));
-      if(slackInstance) return JSON.stringify({success: false, message: `please set the action for Slack node with id ${slackInstance.nodeId}`})
+      const slackInstance = workflow.slackId.find(
+        ({ action }) => !action?.trigger || !action.trigger.length
+      );
+      if (slackInstance)
+        return JSON.stringify({
+          success: false,
+          message: `please set the action for Slack node with id ${slackInstance.nodeId}`,
+        });
 
-      const notionInstance = workflow.notionId.find(({ trigger }) => (!trigger || !trigger.length))
-      if(notionInstance) return JSON.stringify({sucees: false, message: `please set the action for Notion node with id ${notionInstance.nodeId}`});
-      
+      const notionInstance = workflow.notionId.find(
+        ({ trigger }) => !trigger || !trigger.length
+      );
+      if (notionInstance)
+        return JSON.stringify({
+          sucees: false,
+          message: `please set the action for Notion node with id ${notionInstance.nodeId}`,
+        });
+
       await Workflow.findOneAndUpdate(
         { _id: workflowId, userId: dbUser?._id },
         {
@@ -157,16 +188,27 @@ export const onPublishWorkflow = async ({
           },
         }
       );
-      
+
+      await axios.post(
+        "/api/automate",
+        { publish, workflowId },
+        { headers: { "Content-Type": "application/json" } }
+      );
       revalidatePath(`/workflows/editor/${workflowId}`);
     }
 
-    return JSON.stringify({success: publish, message: publish
-      ? "Workflow published successfully!"
-      : "Workflow unpublished successfully!"});
+    return JSON.stringify({
+      success: publish,
+      message: publish
+        ? "Workflow published successfully!"
+        : "Workflow unpublished successfully!",
+    });
   } catch (error: any) {
     console.log(error?.message);
-    return JSON.stringify({success: false, message:"Failed to publish the workflow."});
+    return JSON.stringify({
+      success: false,
+      message: "Failed to publish the workflow.",
+    });
   }
 };
 
@@ -404,6 +446,86 @@ export const deleteNode = async (
       success: false,
       message: "please provide required parameters",
     });
+  } catch (error: any) {
+    console.log(error?.message);
+    return JSON.stringify({ success: false, error: error?.message });
+  }
+};
+
+export const getCurrentTrigger = async (workflowId: string) => {
+  try {
+    ConnectToDB();
+    const workflow = await Workflow.findById<WorkflowType>(workflowId, {
+      parentTrigger: 1,
+      parentId: 1,
+    });
+    if (workflow) {
+      return JSON.stringify({
+        type: workflow.parentTrigger,
+        id: workflow.parentId,
+      });
+    }
+    return JSON.stringify({ type: "Google Drive", id: "" });
+  } catch (error: any) {
+    console.log(error?.message);
+  }
+};
+
+export const changeTrigger = async (
+  workflowId: string,
+  nodeId: string,
+  nodeType: ConnectionTypes
+) => {
+  try {
+    ConnectToDB();
+    if (nodeType === "Google Drive") {
+      await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
+        $set: {
+          parentTrigger: nodeType,
+          parentId: "",
+        },
+      });
+      return JSON.stringify({ type: "Google Drive", id: "" });
+    } else if (nodeType === "Discord" || nodeType === "Slack") {
+      const Model = nodeType === "Discord" ? Discord : Slack;
+      const collection = await Model.findOne<{ _id: Types.ObjectId }>(
+        { workflowId, nodeId },
+        { _id: 1 }
+      );
+
+      if (collection) {
+        await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
+          $set: {
+            parentTrigger: nodeType,
+            parentId: collection?._id,
+          },
+        });
+
+        return JSON.stringify({
+          type: nodeType,
+          id: nodeId,
+        });
+      }
+    }
+
+    return JSON.stringify({ type: "Google Drive", id: "" });
+  } catch (error: any) {
+    console.log(error?.message);
+  }
+};
+
+export const getWorkflows = async () => {
+  try {
+    ConnectToDB();
+    const user = await currentUser();
+    const dbUser = await User.findOne({ userId: user?.id });
+
+    const workflows = await Workflow.find<WorkflowType>(
+      { userId: dbUser?._id },
+      { name: 1, description: 1 }
+    );
+
+    return JSON.stringify(workflows);
   } catch (error: any) {
     console.log(error?.message);
     return JSON.stringify({ success: false, error: error?.message });

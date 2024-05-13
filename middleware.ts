@@ -13,6 +13,7 @@ const isProtectedRoute = createRouteMatcher([
   "/api/discord",
   "/api/slack",
   "/api/ai/google",
+  "/api/automate",
 ]);
 
 export default clerkMiddleware((auth, req) => {

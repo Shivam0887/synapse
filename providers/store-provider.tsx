@@ -6,35 +6,40 @@ import React, { useState, useContext, createContext } from "react";
 type initialStateType = {
   googleFile: any;
   setGoogleFile: React.Dispatch<React.SetStateAction<any>>;
-  slackChannels: Option[];
-  setSlackChannels: React.Dispatch<React.SetStateAction<Option[]>>;
-  selectedSlackChannels: Option[];
-  setSelectedSlackChannels: React.Dispatch<React.SetStateAction<Option[]>>;
+  username: string;
+  email: string;
+  setEmail: React.Dispatch<React.SetStateAction<string>>;
+  setUsername: React.Dispatch<React.SetStateAction<string>>;
+  localImageUrl: string;
+  setLocalImageUrl: React.Dispatch<React.SetStateAction<string>>;
 };
 
 const StoreContext = createContext<initialStateType>({
   googleFile: {},
   setGoogleFile: () => {},
-  selectedSlackChannels: [],
-  setSelectedSlackChannels: () => {},
-  setSlackChannels: () => {},
-  slackChannels: [],
+  localImageUrl: "",
+  setLocalImageUrl: () => {},
+  setUsername: () => {},
+  username: "",
+  email: "",
+  setEmail: () => {},
 });
 
 export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
   const [googleFile, setGoogleFile] = useState({});
-  const [slackChannels, setSlackChannels] = useState<Option[]>([]);
-  const [selectedSlackChannels, setSelectedSlackChannels] = useState<Option[]>(
-    []
-  );
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [localImageUrl, setLocalImageUrl] = useState("");
 
   const value = {
     googleFile,
     setGoogleFile,
-    slackChannels,
-    setSlackChannels,
-    selectedSlackChannels,
-    setSelectedSlackChannels,
+    username,
+    localImageUrl,
+    setLocalImageUrl,
+    setUsername,
+    email,
+    setEmail,
   };
 
   return (

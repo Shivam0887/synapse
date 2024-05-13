@@ -1,15 +1,14 @@
-import { MenuIcon } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { UserButton } from "@clerk/nextjs";
 import { currentUser } from "@clerk/nextjs/server";
+import UserInfo from "../infobar/user-info";
 
 const Navbar = async () => {
   const user = await currentUser();
 
   return (
     <header
-      className="fixed right-0 left-0 top-0 p-4 bg-black/40 z-[110]
+      className="sticky right-0 left-0 top-0 p-4 bg-black/40 z-10 h-20
     flex items-center justify-between border-b-[1px] border-neutral-900
     backdrop-blur-lg"
     >
@@ -20,29 +19,6 @@ const Navbar = async () => {
         </div>
         <p className="text-lg sm:text-3xl font-bold ml-2 sm:ml-3">napse</p>
       </aside>
-
-      <nav className="absolute left-[50%] top-[50%] translate-x-[-50%] translate-y-[-50%] hidden md:block">
-        <ul className="flex items-center gap-4 list-none">
-          <li>
-            <Link href="">Products</Link>
-          </li>
-          <li>
-            <Link href="">Pricing</Link>
-          </li>
-          <li>
-            <Link href="">Clients</Link>
-          </li>
-          <li>
-            <Link href="">Resources</Link>
-          </li>
-          <li>
-            <Link href="">Documentation</Link>
-          </li>
-          <li>
-            <Link href="">Enterprise</Link>
-          </li>
-        </ul>
-      </nav>
 
       <aside className="flex items-center gap-4">
         <Link
@@ -56,8 +32,8 @@ const Navbar = async () => {
             {user ? "Dashboard" : "Get Started"}
           </span>
         </Link>
-        {user ? <UserButton afterSignOutUrl="/" /> : null}
-        <MenuIcon className="md:hidden" />
+        <Link href="#pricing">Pricing</Link>
+        {user ? <UserInfo isHome={true} /> : null}
       </aside>
     </header>
   );

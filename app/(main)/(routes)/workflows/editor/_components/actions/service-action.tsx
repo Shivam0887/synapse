@@ -9,6 +9,7 @@ import { z } from "zod";
 import ActionForm from "@/components/forms/action-form";
 import axios from "axios";
 import NotionAction from "./notion-action";
+import { Ghost } from "lucide-react";
 
 type ServiceActionProps = {
   workflowId: string;
@@ -125,6 +126,12 @@ const ServiceAction = ({ workflowId }: ServiceActionProps) => {
   return (
     <Card>
       <CardContent className="p-4">
+        {selectedNode.type === "Google Drive" && (
+          <div className="flex flex-col items-center gap-2">
+            <Ghost />
+            <p className="text-center font-medium">Not available</p>
+          </div>
+        )}
         {(selectedNode.type === "Slack" || selectedNode.type === "Discord") && (
           <ActionForm
             actionData={actionData}

@@ -1,22 +1,22 @@
 import { useDropzone } from "@uploadthing/react";
 import { useUploadThing } from "@/lib/uploadthing";
 import { generateClientDropzoneAccept } from "uploadthing/client";
-import { set } from "mongoose";
+import { useStore } from "@/providers/store-provider";
 
 type UploadButtonProps = {
-  onUpload: () => void;
   setProgress: (val: number) => void;
   label: string;
 };
 
-const UploadButton = ({ onUpload, setProgress, label }: UploadButtonProps) => {
+const UploadButton = ({ setProgress, label }: UploadButtonProps) => {
+  const { setLocalImageUrl } = useStore();
   const { startUpload, permittedFileInfo } = useUploadThing("imageUploader", {
     onUploadProgress: (progress) => {
       setProgress(progress);
     },
-    onClientUploadComplete: () => {
-      onUpload();
+    onClientUploadComplete: (files) => {
       setProgress(0);
+      setLocalImageUrl(files[0].serverData.localImageUrl);
     },
     onUploadError: (err) => {
       console.log(err.message);

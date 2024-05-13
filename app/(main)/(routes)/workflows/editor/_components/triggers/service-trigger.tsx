@@ -12,6 +12,7 @@ import {
 } from "../../../../connections/_actions/connection-action";
 import { ConnectionTypes } from "@/lib/types";
 import { toast } from "sonner";
+import { Ghost } from "lucide-react";
 
 type ServiceTriggerProps = {
   workflowId: string;
@@ -47,13 +48,24 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
         );
         if (result) {
           const data = JSON.parse(result);
-          if (data.success) return ({trigger: data.data.action.trigger as string, channelId:  data.data.channelId as string});
+          if (data.success)
+            return {
+              trigger: data.data.action.trigger as string,
+              channelId: data.data.channelId as string,
+            };
         }
       })
     );
 
-    const sourceNodeChannelId = sourceNodeTrigger ? JSON.parse(sourceNodeTrigger).data.channelId : "";
-    const isLoopExists = targetTrigger.some((data) => trigger === "0" && data?.trigger === trigger && data?.channelId === sourceNodeChannelId);
+    const sourceNodeChannelId = sourceNodeTrigger
+      ? JSON.parse(sourceNodeTrigger).data.channelId
+      : "";
+    const isLoopExists = targetTrigger.some(
+      (data) =>
+        trigger === "0" &&
+        data?.trigger === trigger &&
+        data?.channelId === sourceNodeChannelId
+    );
     if (isLoopExists) {
       toast.warning("Synapse detects a loop. Please change the trigger.");
       return;
@@ -126,8 +138,9 @@ const ServiceTrigger = ({ workflowId }: ServiceTriggerProps) => {
           />
         )}
         {selectedNode.type === "Notion" && (
-          <div className="text-center">
-            <p>No Trigger.</p>
+          <div className="flex flex-col items-center gap-2">
+            <Ghost />
+            <p className="text-center font-medium">Not available</p>
           </div>
         )}
       </CardContent>

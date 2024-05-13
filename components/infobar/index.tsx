@@ -1,20 +1,27 @@
 "use client";
-import React, { useEffect } from "react";
-import { Book, Headset, Search } from "lucide-react";
-import Templates from "@/components/icons/cloud_download";
-import { Input } from "@/components/ui/input";
-
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { UserButton } from "@clerk/nextjs";
-import ActionTooltip from "../globals/action-tooltip";
-import { Button } from "../ui/button";
+import React, { useEffect, useState } from "react";
+import { Search } from "lucide-react";
+import UserInfo from "./user-info";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "../ui/command";
+import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
+import { getWorkflows } from "@/app/(main)/(routes)/workflows/_actions/workflow-action";
+import Link from "next/link";
 
 // import { useBilling } from '@/providers/billing-provider'
 // import { onPaymentDetails } from '@/app/(main)/(pages)/billing/_actions/payment-connecetions'
 
-type Props = {};
-
-const InfoBar = (props: Props) => {
+const InfoBar = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [workflows, setWorkflows] = useState<
+    { _id: string; name: string; description: string }[]
+  >([]);
   //   const { credits, tier, setCredits, setTier } = useBilling()
 
   //   const onGetPayment = async () => {
@@ -25,9 +32,24 @@ const InfoBar = (props: Props) => {
   //     }
   //   }
 
-  //   useEffect(() => {
-  //     onGetPayment()
-  //   }, [])
+  useEffect(() => {
+    // onGetPayment()
+    (async () => {
+      const response = await getWorkflows();
+      const data = JSON.parse(response);
+
+      if (Array.isArray(data)) {
+        setWorkflows(data);
+      }
+    })();
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "/" && e.ctrlKey) {
+        setIsOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown, false);
+    return () => document.removeEventListener("keydown", handleKeyDown, false);
+  }, []);
 
   return (
     <div className="flex flex-row justify-end gap-6 items-center px-4 py-4 w-full dark:bg-black ">
@@ -41,25 +63,42 @@ const InfoBar = (props: Props) => {
           </span>
         )}
       </span> */}
-      <span className="flex items-center rounded-full bg-muted p-3">
-        <Search />
-        <input
-          type="text"
-          placeholder="Quick Search"
-          className="border-none bg-transparent ml-2 outline-none"
-        />
-      </span>
-      <TooltipProvider>
-        <ActionTooltip label={<Headset />} sideOffset={10}>
-          <p>Contact Support</p>
-        </ActionTooltip>
-      </TooltipProvider>
-      <TooltipProvider>
-        <ActionTooltip label={<Book />} sideOffset={10}>
-          <p>Guide</p>
-        </ActionTooltip>
-      </TooltipProvider>
-      <UserButton afterSignOutUrl="/" />
+      <div className="flex w-40 gap-2 items-center rounded-3xl bg-muted p-2">
+        <Search className="h-5 w-5" />
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+          <DialogTrigger className="outline-none">
+            <span className="flex items-center gap-3">
+              Search <kbd className="text-xs">ctrl+/</kbd>
+            </span>
+          </DialogTrigger>
+          <DialogContent>
+            <Command>
+              <CommandInput placeholder="Search for a workflow..." />
+              <CommandList>
+                <CommandEmpty>No results found.</CommandEmpty>
+                <CommandGroup heading="Workflows">
+                  {workflows.map(({ _id, description, name }) => (
+                    <CommandItem key={_id}>
+                      <Link
+                        href={`/workflows/editor/${_id}`}
+                        onClick={() => setIsOpen(false)}
+                        className="flex flex-col justify-center"
+                      >
+                        <p className="text-sm">{name}</p>
+                        <p className="text-xs text-neutral-500">
+                          {description}
+                        </p>
+                      </Link>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <UserInfo isHome={false} />
     </div>
   );
 };

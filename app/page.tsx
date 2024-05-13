@@ -12,12 +12,12 @@ import Image from "next/image";
 
 export default function Home() {
   return (
-    <main>
+    <main className="relative">
       <Navbar />
-      <section className="md:mb-[18rem] mb-[-100px] h-screen w-full bg-neutral-950 rounded-md flex flex-col items-center antialiased">
-        <div className="absolute inset-0 h-full w-full items-center px-5 py-24 [background:radial-gradient(125%_125%_at_50%_10%,#000_35%,#223_100%)]" />
+      <section className="mt-[0px] z-0 mb-[-50px] relative min-h-full w-full bg-neutral-950 rounded-md flex flex-col items-center antialiased">
+        <div className="absolute inset-0 h-full w-full items-center [background:radial-gradient(125%_125%_at_50%_10%,#000_35%,#223_100%)]" />
 
-        <div className="flex flex-col relative z-[100]">
+        <div className="flex flex-col">
           <ContainerScroll
             titleComponent={
               <div className="flex items-center flex-col">
@@ -46,7 +46,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section>
+      <section id="pricing">
         <LampContainer>
           <h1 className="text-5xl bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-600 font-sans font-bold">
             Plans That Fit You Best

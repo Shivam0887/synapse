@@ -1,15 +1,19 @@
-// "use server";
+"use server";
 
-// import ConnectToDB from "@/lib/connectToDB";
-// import { User, UserType } from "@/models/user-model";
+import ConnectToDB from "@/lib/connectToDB";
+import { User, UserType } from "@/models/user-model";
+import { currentUser } from "@clerk/nextjs/server";
 
-// export const getUser = async ({ userId }: { userId: string }) => {
-//   ConnectToDB();
-//   const user = await User.findOne<UserType | null>(
-//     { userId },
-//     { _id: 0, connections: 1 }
-//   );
-//   if (!user) return;
+export const getUser = async () => {
+  ConnectToDB();
+  const user = await currentUser();
+  if (!user) return;
 
-//   return JSON.stringify(user.connections);
-// };
+  const dbUser = await User.findOne<UserType | null>(
+    { userId: user.id },
+    { _id: 0, name: 1, imageUrl: 1, email: 1, localImageUrl: 1 }
+  );
+
+  if (!dbUser) return;
+  return JSON.stringify(dbUser);
+};

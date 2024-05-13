@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
         userId: id,
         name: first_name ?? "",
         imageUrl: image_url ?? "",
+        localImageUrl: image_url ?? "",
         email: email_addresses[0].email_address,
       });
     }

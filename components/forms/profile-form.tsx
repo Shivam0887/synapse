@@ -15,24 +15,30 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useStore } from "@/providers/store-provider";
 
 type ProfileFormProps = {
-  name: string | null | undefined;
-  email: string | null | undefined;
   updateUserInfo: (val: string) => Promise<void>;
 };
 
-const ProfileForm = ({ email, name, updateUserInfo }: ProfileFormProps) => {
+const ProfileForm = ({ updateUserInfo }: ProfileFormProps) => {
+  const { setUsername, username, email } = useStore();
   const form = useForm<z.infer<typeof ProfileSchema>>({
     resolver: zodResolver(ProfileSchema),
     defaultValues: {
-      email: email ?? "",
-      name: name ?? "",
+      email,
+      name: username,
+    },
+    values: {
+      email,
+      name: username,
     },
   });
 
   const onSubmit = async ({ email, name }: z.infer<typeof ProfileSchema>) => {
     await updateUserInfo(name);
+    setUsername(name);
   };
 
   return (
@@ -72,7 +78,7 @@ const ProfileForm = ({ email, name, updateUserInfo }: ProfileFormProps) => {
           variant="secondary"
           className="self-start font-medium"
         >
-          {form.formState.isLoading ? (
+          {form.formState.isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...
             </>
