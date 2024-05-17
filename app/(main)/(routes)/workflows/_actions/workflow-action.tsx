@@ -128,6 +128,8 @@ export const onPublishWorkflow = async ({
       slackId: 1,
       notionId: 1,
       googleDriveWatchTrigger: 1,
+      nodeMetadata: 1,
+      parentTrigger: 1,
     })
       .populate({
         path: "discordId",
@@ -146,7 +148,23 @@ export const onPublishWorkflow = async ({
       });
 
     if (workflow) {
-      if (!workflow.googleDriveWatchTrigger?.isListening) {
+      const nodeMetadata = JSON.parse(workflow.nodeMetadata!) as {
+        nodeId: string;
+        nodeType: ConnectionTypes;
+      }[];
+
+      if (workflow.parentTrigger === "None") {
+        return JSON.stringify({
+          success: false,
+          message: "Current trigger is not set to a valid trigger.",
+        });
+      }
+
+      if (
+        workflow.parentTrigger === "Google Drive" &&
+        !workflow.googleDriveWatchTrigger?.isListening &&
+        nodeMetadata.some(({ nodeType }) => nodeType === "Google Drive")
+      ) {
         return JSON.stringify({
           success: false,
           message: "please set the trigger for Google Drive node",
@@ -156,6 +174,7 @@ export const onPublishWorkflow = async ({
       const discordInstance = workflow.discordId.find(
         ({ action }) => !action?.trigger || !action.trigger.length
       );
+
       if (discordInstance)
         return JSON.stringify({
           success: false,
@@ -189,11 +208,12 @@ export const onPublishWorkflow = async ({
         }
       );
 
-      await axios.post(
-        "/api/automate",
-        { publish, workflowId },
-        { headers: { "Content-Type": "application/json" } }
-      );
+      await axios.post("http://localhost:3000/api/automate", {
+        publish,
+        workflowId,
+        _id: dbUser?._id.toString(),
+      });
+
       revalidatePath(`/workflows/editor/${workflowId}`);
     }
 
@@ -218,17 +238,28 @@ export const getGoogleListener = async (workflowId: string) => {
   try {
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
-    const listener = await Workflow.findOne<{
-      googleDriveWatchTrigger: { isListening: boolean };
-    } | null>(
+    const listener = await Workflow.findOne<
+      Pick<WorkflowType, "googleDriveWatchTrigger">
+    >(
       { _id: workflowId, userId: dbUser?._id },
       {
         _id: 0,
-        "googleDriveWatchTrigger.isListening": 1,
+        googleDriveWatchTrigger: 1,
       }
     );
 
-    return JSON.stringify(!!listener?.googleDriveWatchTrigger.isListening);
+    if (listener && listener.googleDriveWatchTrigger) {
+      const {
+        channelId,
+        connections,
+        expiresAt,
+        resourceId,
+        resourceUri,
+        files,
+        ...rest
+      } = listener.googleDriveWatchTrigger;
+      return JSON.stringify(rest);
+    }
   } catch (error: any) {
     console.log(error?.message);
   }
@@ -474,18 +505,26 @@ export const getCurrentTrigger = async (workflowId: string) => {
 export const changeTrigger = async (
   workflowId: string,
   nodeId: string,
-  nodeType: ConnectionTypes
+  nodeType: ConnectionTypes | "None"
 ) => {
   try {
     ConnectToDB();
-    if (nodeType === "Google Drive") {
-      await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
-        $set: {
-          parentTrigger: nodeType,
-          parentId: "",
-        },
+    if (nodeType === "Google Drive" || nodeType === "None") {
+      const googleDriveTrigger = await Workflow.findById(workflowId, {
+        googleDriveWatchTrigger: 1,
       });
-      return JSON.stringify({ type: "Google Drive", id: "" });
+      if (
+        googleDriveTrigger?.googleDriveWatchTrigger?.isListening ||
+        nodeType === "None"
+      ) {
+        await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
+          $set: {
+            parentTrigger: nodeType,
+            parentId: "",
+          },
+        });
+        return JSON.stringify({ type: nodeType, id: "" });
+      }
     } else if (nodeType === "Discord" || nodeType === "Slack") {
       const Model = nodeType === "Discord" ? Discord : Slack;
       const collection = await Model.findOne<{ _id: Types.ObjectId }>(
@@ -508,7 +547,7 @@ export const changeTrigger = async (
       }
     }
 
-    return JSON.stringify({ type: "Google Drive", id: "" });
+    return JSON.stringify({ type: "None", id: "" });
   } catch (error: any) {
     console.log(error?.message);
   }

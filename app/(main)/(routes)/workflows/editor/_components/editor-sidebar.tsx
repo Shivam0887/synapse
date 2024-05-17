@@ -39,6 +39,7 @@ import { Info } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ActionTooltip from "@/components/globals/action-tooltip";
 import { Button } from "@/components/ui/button";
+import { getTrigger } from "../../../connections/_actions/connection-action";
 
 const EditorSidebar = () => {
   const { nodes, selectedNode } = useEditor().state.editor;
@@ -108,11 +109,37 @@ const EditorSidebar = () => {
     const nodeType = selectedNode.type as ConnectionTypes;
     const nodeId = selectedNode.id;
 
-    const response = await changeTrigger(editorId, nodeId, nodeType);
-    if (response) {
-      const data = JSON.parse(response);
-      setParentTrigger(data);
-      toast.success("trigger changed successfully!");
+    if (nodeType === "Discord" || nodeType === "Slack") {
+      (async () => {
+        const response = await getTrigger(editorId, nodeId, nodeType);
+        if (response) {
+          const data = JSON.parse(response);
+          if (data.success) {
+            if (!data.data.trigger) {
+              toast.error("please set trigger");
+            } else {
+              const response = await changeTrigger(editorId, nodeId, nodeType);
+              if (response) {
+                const data = JSON.parse(response);
+                setParentTrigger(data);
+                toast.success("trigger changed successfully!");
+              }
+            }
+          } else {
+            if (data.message) toast.message(data.message);
+            else toast.error(data.error);
+          }
+        }
+      })();
+    } else if (nodeType === "Google Drive") {
+      const response = await changeTrigger(editorId, nodeId, nodeType);
+      if (response) {
+        const data = JSON.parse(response);
+        setParentTrigger(data);
+        if (data.type === "None")
+          toast.message("please set the trigger for Google Drive node");
+        else toast.success("trigger changed successfully!");
+      }
     }
   };
 

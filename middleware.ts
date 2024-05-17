@@ -13,7 +13,7 @@ const isProtectedRoute = createRouteMatcher([
   "/api/discord",
   "/api/slack",
   "/api/ai/google",
-  "/api/automate",
+  // "/api/automate",
 ]);
 
 export default clerkMiddleware((auth, req) => {
@@ -21,5 +21,5 @@ export default clerkMiddleware((auth, req) => {
 });
 
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/(api|trpc)(.*)"],
+  matcher: ["/((?!.*\\..*|_next).*)", "/", "/(api|trpc)(.*)"],
 };

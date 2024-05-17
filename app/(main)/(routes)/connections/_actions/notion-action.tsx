@@ -149,7 +149,7 @@ export const onCreatePage = async ({
   nodeId: string;
   databaseId?: string;
   pageId?: string;
-  properties: any;
+  properties?: any;
   isTesting: boolean;
 }) => {
   try {

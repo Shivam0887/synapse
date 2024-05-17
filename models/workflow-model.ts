@@ -50,27 +50,27 @@ export const WorkflowSchema = new Schema(
       },
       changes: {
         type: String,
-        enum: ["true", "false"],
+        enum: ["true", "false", ""],
       },
       // view files changes - creation, deletion, renaming, etc.
       files: {
         type: String,
-        enum: ["true", "false"],
+        enum: ["true", "false", ""],
       },
-      folderId: String,
+      folderId: { type: String, default: () => "" },
       supportedAllDrives: {
         type: String,
-        enum: ["true", "false"],
+        enum: ["true", "false", ""],
       },
       includeRemoved: {
         type: String,
-        enum: ["true", "false"],
+        enum: ["true", "false", ""],
       },
       restrictToMyDrive: {
         type: String,
-        enum: ["true", "false"],
+        enum: ["true", "false", ""],
       },
-      fileId: String,
+      fileId: { type: String, default: () => "" },
       channelId: String,
       expiresAt: Number,
       resourceUri: String,
@@ -98,7 +98,8 @@ export const WorkflowSchema = new Schema(
     },
     parentTrigger: {
       type: String,
-      default: () => "Google Drive",
+      enum: ["Google Drive", "Slack", "Discord", "None"],
+      default: () => "None",
     },
     parentId: {
       type: String,
@@ -107,8 +108,6 @@ export const WorkflowSchema = new Schema(
   },
   { timestamps: true }
 );
-
-// WorkflowSchema.index({ userId: 1 });
 
 export type WorkflowType = InferSchemaType<typeof WorkflowSchema> & {
   _id: Types.ObjectId;

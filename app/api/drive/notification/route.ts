@@ -1,6 +1,4 @@
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
-import { onCreateNewPageInDatabase } from "@/app/(main)/(routes)/connections/_actions/notion-action";
-import { postMessageToSlack } from "@/app/(main)/(routes)/connections/_actions/slack-action";
 import ConnectToDB from "@/lib/connectToDB";
 import { ConnectionTypes } from "@/lib/types";
 import { Discord, DiscordType } from "@/models/discord-model";

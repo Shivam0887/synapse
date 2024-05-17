@@ -162,3 +162,31 @@ export type NotionDatabaseType = {
     type: PropertyTypes;
   }[];
 }[];
+
+export type ResultDataType = {
+  webhookUrl?: string | null;
+  action?: {
+    mode?: "default" | "custom" | null;
+    message?: string | null;
+    trigger?: string | null;
+    user?: string | null;
+  } | null;
+  nodeId?: string | null;
+  nodeType: "Discord" | "Notion" | "Slack" | "Google Drive";
+  accessToken?: string | null;
+  workflowId?: string | null;
+};
+
+export type ResultType = {
+  Discord: {
+    metaData: { channelId: string; guildId: string; trigger: string };
+    result: ResultDataType[];
+  };
+  Slack: {
+    metaData: { channelId: string; teamId: string; trigger: string };
+    result: ResultDataType[];
+  };
+  "Google Drive": {
+    result: ResultDataType[];
+  };
+};

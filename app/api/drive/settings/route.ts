@@ -1,8 +1,9 @@
 import { currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import ConnectToDB from "@/lib/connectToDB";
-import { Workflow } from "@/models/workflow-model";
+import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 const reqSchema = z.object({
   folderId: z.string(),
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
 
     ConnectToDB();
 
+    const workflow = await Workflow.findById<WorkflowType>(workflowId, { parentTrigger: 1, parentId: 1 })
+    if(workflow){
+
     await Workflow.findByIdAndUpdate(workflowId, {
       $set: {
         googleDriveWatchTrigger: {
@@ -50,15 +54,20 @@ export async function POST(req: NextRequest) {
           includeRemoved,
           restrictToMyDrive,
         },
+        parentTrigger: !isListening && workflow.parentTrigger === "Google Drive" ? "None" : workflow.parentTrigger,
+        parentId: !isListening && workflow.parentTrigger === "Google Drive" ? "" : workflow.parentId,
       },
     });
+
+    revalidatePath(`/workflows/editor/${workflowId}`)
 
     const message = !isListening
       ? "trigger settings reset successfully!"
       : "trigger settings save successfully!";
     return new NextResponse(message, {
       status: 201,
-    });
+    })
+  }
   } catch (error: any) {
     console.log(error?.message);
     return new NextResponse("Oops! something went wrong, try again", {

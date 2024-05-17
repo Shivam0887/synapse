@@ -19,7 +19,7 @@ const DiscordTrigger = ({
 }: TriggerProps) => {
   return (
     <div className="relative">
-      {loading || !trigger ? (
+      {loading ? (
         <WorkflowLoading />
       ) : (
         <>

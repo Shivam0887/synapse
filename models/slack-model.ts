@@ -17,7 +17,7 @@ export const SlackSchema = new Schema(
     },
     channelId: { type: String, unique: true },
     webhookUrl: { type: String, unique: true },
-    trigger: String,
+    trigger: { type: String, enum: ["0", "1", "2", "3", "4"] },
     action: {
       trigger: String,
       user: String,

@@ -201,6 +201,7 @@ const MultipleSelector = React.forwardRef<
         setSelected(newOptions);
         onChange?.(newOptions);
       },
+      // eslint-disable-next-line
       [selected]
     );
 
@@ -219,6 +220,7 @@ const MultipleSelector = React.forwardRef<
           }
         }
       },
+      // eslint-disable-next-line
       [selected]
     );
 
@@ -260,6 +262,7 @@ const MultipleSelector = React.forwardRef<
       };
 
       void exec();
+      // eslint-disable-next-line
     }, [debouncedSearchTerm, open]);
 
     const CreatableItem = () => {

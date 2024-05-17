@@ -69,7 +69,14 @@ export async function GET(req: NextRequest) {
         false: false,
       };
 
-      if (changes === "true") {
+      if (
+        changes === "true" &&
+        changes &&
+        folderId &&
+        includeRemoved &&
+        restrictToMyDrive &&
+        supportedAllDrives
+      ) {
         const channel = await drive.changes.watch({
           pageToken: (
             await drive.changes.getStartPageToken({})
@@ -94,7 +101,7 @@ export async function GET(req: NextRequest) {
         if (channel?.data?.resourceId) {
           _resourceId = channel.data.resourceId;
         }
-      } else if (files === "false") {
+      } else if (files === "false" && supportedAllDrives) {
         const channel = await drive.files.watch({
           supportsAllDrives: mapper[supportedAllDrives!],
           fileId: fileId!,

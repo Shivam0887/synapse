@@ -30,7 +30,7 @@ import { CustomNodeDefaultValues } from "@/lib/constant";
 import WorkflowLoading from "./workflow-loading";
 import FlowInstance from "./flow-instance";
 import EditorSidebar from "./editor-sidebar";
-import { deleteNode, onGetNodesEdges } from "../../_actions/workflow-action";
+import { changeTrigger, deleteNode, onGetNodesEdges } from "../../_actions/workflow-action";
 import { addConnection } from "../../../connections/_actions/connection-action";
 
 type CustomEdgeType = { id: string; source: string; target: string };
@@ -121,10 +121,17 @@ const Editor = () => {
       if (response) {
         const data = JSON.parse(response);
         if (data.success) {
+          await changeTrigger(editorId, "", "None");
+          
           toast.success(data.data);
           setTimeout(() => {
             toast.warning(<p>save the workflow after node deletion</p>);
           }, 1000);
+
+          setTimeout(() => {
+            toast.warning(<p>Current trigger is not set to a valid trigger.</p>);
+          }, 1000);
+
         } else {
           if (data.message) toast.message(data.message);
           else toast.error(data.error);

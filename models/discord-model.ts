@@ -18,7 +18,7 @@ export const DiscordSchema = new Schema(
       type: String,
       unique: true,
     },
-    trigger: String,
+    trigger: { type: String, enum: ["0", "1", "2", "3"] },
     action: {
       trigger: String,
       user: String,

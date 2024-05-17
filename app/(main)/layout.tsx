@@ -2,11 +2,7 @@ import React from "react";
 import Sidebar from "@/components/sidebar";
 import InfoBar from "@/components/infobar";
 
-type MainLayoutProps = {
-  children: React.ReactNode;
-};
-
-const MainLayout = ({ children }: MainLayoutProps) => {
+const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="flex !overflow-hidden h-screen">
       <Sidebar />

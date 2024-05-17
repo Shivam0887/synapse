@@ -45,8 +45,8 @@ export const CONNECTIONS: Record<ConnectionTypes, Connection> = {
     description: "Connect your discord to send notification and messages",
     image: "/discord.png",
     message: {
-      "0": "A User or Role is mentioned.",
-      "1": "A new message is posted in the text channel.",
+      "0": "A new message is posted in the text channel.",
+      "1": "A User or Role is mentioned.",
       "2": "A new Reaction is added to a Message.",
       "3": "A new user has join the Discord Server.",
     },
@@ -62,10 +62,10 @@ export const CONNECTIONS: Record<ConnectionTypes, Connection> = {
       "Use slack to send notifications to team members through your own custom bot.",
     image: "/slack.png",
     message: {
-      "0": "A new #channel is created",
+      "0": "A new message is posted to a #channel.",
       "1": "A new file is uploaded into the public #channel.",
       "2": "A new Reaction is added to a Message.",
-      "3": "A new message is posted to a #channel.",
+      "3": "A new #channel is created.",
       "4": "A new user joined a #public-channel or #private-channel.",
     },
   },

@@ -112,6 +112,7 @@ export const CardItem = ({
 
   useEffect(() => {
     handleAnimations();
+    // eslint-disable-next-line
   }, [isMouseEntered]);
 
   const handleAnimations = () => {

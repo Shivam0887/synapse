@@ -8,6 +8,8 @@ import ModalProvider from "@/providers/modal-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { StoreProvider } from "@/providers/store-provider";
 
+import { dark } from "@clerk/themes";
+
 const font = DM_Sans({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -23,6 +25,7 @@ export default function RootLayout({
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
+      appearance={{ baseTheme: [dark] }}
     >
       <html lang="en" suppressHydrationWarning className="scroll-smooth">
         <head />
