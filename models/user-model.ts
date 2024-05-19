@@ -96,6 +96,34 @@ export const UserSchema = new Schema(
       },
       default: () => {},
     },
+    WorkflowToDrive: {
+      type: Map,
+      of: {
+        result: [
+          {
+            webhookUrl: String,
+            action: {
+              mode: {
+                type: String,
+                enum: ["default", "custom"],
+              },
+              message: String,
+              trigger: String,
+              user: String,
+            },
+            nodeId: String,
+            nodeType: {
+              type: String,
+              enum: ["Discord", "Notion", "Slack"],
+              required: true,
+            },
+            accessToken: String,
+            workflowId: String,
+          },
+        ],
+      },
+      default: () => {},
+    },
   },
   { timestamps: true }
 );

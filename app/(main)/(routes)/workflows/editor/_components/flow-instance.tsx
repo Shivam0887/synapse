@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import React, { SetStateAction, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
   getWorkflowById,
@@ -12,6 +12,8 @@ import { CustomNodeTypes } from "@/lib/types";
 
 type FlowInstanceProps = {
   children: React.ReactNode;
+  isPublished: boolean;
+  setIsPublished: React.Dispatch<SetStateAction<boolean>>;
 };
 
 type currentWorkflowType = {
@@ -19,14 +21,17 @@ type currentWorkflowType = {
   nodeType: CustomNodeTypes;
 };
 
-const FlowInstance = ({ children }: FlowInstanceProps) => {
+const FlowInstance = ({
+  children,
+  isPublished,
+  setIsPublished,
+}: FlowInstanceProps) => {
   const { editorId } = useParams() as { editorId: string };
   const { nodes, edges } = useEditor().state.editor;
   const [currentWorkflow, setCurrentWorkflow] = useState<currentWorkflowType[]>(
     []
   );
 
-  const [isPublished, setIsPublished] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -76,6 +81,7 @@ const FlowInstance = ({ children }: FlowInstanceProps) => {
       const publish = await getWorkflowById(editorId);
       setIsPublished(publish);
     })();
+    // eslint-disable-next-line
   }, [editorId]);
 
   return (

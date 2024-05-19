@@ -30,7 +30,11 @@ import { CustomNodeDefaultValues } from "@/lib/constant";
 import WorkflowLoading from "./workflow-loading";
 import FlowInstance from "./flow-instance";
 import EditorSidebar from "./editor-sidebar";
-import { changeTrigger, deleteNode, onGetNodesEdges } from "../../_actions/workflow-action";
+import {
+  changeTrigger,
+  deleteNode,
+  onGetNodesEdges,
+} from "../../_actions/workflow-action";
 import { addConnection } from "../../../connections/_actions/connection-action";
 
 type CustomEdgeType = { id: string; source: string; target: string };
@@ -38,6 +42,7 @@ type CustomEdgeType = { id: string; source: string; target: string };
 const Editor = () => {
   const { dispatch, state } = useEditor();
   const { editorId } = useParams() as { editorId: string };
+  const [isPublished, setIsPublished] = useState(false);
 
   const [nodes, setNodes] = useState<CustomNodeType[]>([]);
   const [edges, setEdges] = useState<CustomEdgeType[]>([]);
@@ -122,16 +127,17 @@ const Editor = () => {
         const data = JSON.parse(response);
         if (data.success) {
           await changeTrigger(editorId, "", "None");
-          
+
           toast.success(data.data);
           setTimeout(() => {
             toast.warning(<p>save the workflow after node deletion</p>);
           }, 1000);
 
           setTimeout(() => {
-            toast.warning(<p>Current trigger is not set to a valid trigger.</p>);
+            toast.warning(
+              <p>Current trigger is not set to a valid trigger.</p>
+            );
           }, 1000);
-
         } else {
           if (data.message) toast.message(data.message);
           else toast.error(data.error);
@@ -257,16 +263,15 @@ const Editor = () => {
   const onGetWorkFlow = useCallback(async () => {
     setIsWorkflowLoading(true);
     const response = await onGetNodesEdges({ flowId: editorId });
-    if (response.status && response.data) {
-      const _edges = JSON.parse(
-        JSON.parse(response.data).edges
-      ) as CustomEdgeType[];
-      const _nodes = JSON.parse(
-        JSON.parse(response.data).nodes
-      ) as CustomNodeType[];
+    if (response) {
+      const data = JSON.parse(response);
+      if (data.status) {
+        const _edges = data.data.edges as CustomEdgeType[];
+        const _nodes = data.data.nodes as CustomNodeType[];
 
-      setEdges(_edges);
-      setNodes(_nodes);
+        setEdges(_edges);
+        setNodes(_nodes);
+      } else toast.error(data.error);
     }
     setIsWorkflowLoading(false);
   }, [editorId]);
@@ -329,8 +334,11 @@ const Editor = () => {
         {isWorkflowLoading ? (
           <WorkflowLoading />
         ) : (
-          <FlowInstance>
-            <EditorSidebar />
+          <FlowInstance
+            isPublished={isPublished}
+            setIsPublished={setIsPublished}
+          >
+            <EditorSidebar isPublished={isPublished} />
           </FlowInstance>
         )}
       </ResizablePanel>

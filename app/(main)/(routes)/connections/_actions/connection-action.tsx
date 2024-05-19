@@ -20,6 +20,27 @@ type SaveActionProps = {
   nodeType: ConnectionTypes;
 };
 
+const getDriveInfo = async () => {
+  const user = await currentUser();
+
+  if(user){
+    const clerkResponse = await axios.get(
+      `https://api.clerk.com/v1/users/${user.id}/oauth_access_tokens/oauth_google`,
+      {
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY!}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    const accessToken = clerkResponse.data[0].token;
+
+    return !!accessToken;
+  }
+
+  return false;
+}
+
 export const getTrigger = async (
   workflowId: string,
   nodeId: string,
@@ -275,12 +296,12 @@ export const addConnection = async ({
 
         //What is the type of source node?
         if (sourceNodeType === "Google Drive") {
-          // const isGoogleDriveConnected = await getDriveInfo();
-          // if (!isGoogleDriveConnected) {
-          //   throw new Error(
-          //     `please connect to your Google Drive account. Give access to Google Drive while login.`
-          //   );
-          // }
+          const isGoogleDriveConnected = await getDriveInfo();
+          if (!isGoogleDriveConnected) {
+            throw new Error(
+              `please connect to your Google Drive account. Give access to Google Drive while login.`
+            );
+          }
 
           const field = `googleDriveWatchTrigger.${Target.type}`;
 

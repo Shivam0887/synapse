@@ -48,6 +48,7 @@ export const WorkflowSchema = new Schema(
         type: Boolean,
         default: () => false,
       },
+      pageToken: String,
       changes: {
         type: String,
         enum: ["true", "false", ""],

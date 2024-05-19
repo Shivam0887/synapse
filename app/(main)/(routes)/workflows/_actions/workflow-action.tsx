@@ -94,20 +94,33 @@ export const onWorkflowSave = async ({
 };
 
 export const onGetNodesEdges = async ({ flowId }: { flowId: string }) => {
-  const user = await currentUser();
   try {
+    const user = await currentUser();
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
 
-    const workflow = await Workflow.findOne({
+    const workflow = await Workflow.findOne<WorkflowType>({
       _id: flowId,
       userId: dbUser?._id,
     });
 
-    return { status: true, data: JSON.stringify(workflow) };
+    if (workflow) {
+      return JSON.stringify({
+        status: true,
+        data: {
+          nodes: JSON.parse(workflow.nodes),
+          edges: JSON.parse(workflow.edges),
+        },
+      });
+    }
+
+    return JSON.stringify({ status: false, error: "workflow not found." });
   } catch (error: any) {
     console.log(error?.message);
-    return { status: false, error: "Failed to access the workflow." };
+    return JSON.stringify({
+      status: false,
+      error: "Failed to access the workflow.",
+    });
   }
 };
 
@@ -199,6 +212,13 @@ export const onPublishWorkflow = async ({
           message: `please set the action for Notion node with id ${notionInstance.nodeId}`,
         });
 
+      await axios.post("http://localhost:3000/api/automate", {
+        publish,
+        workflowId,
+        _id: dbUser?._id.toString(),
+        clerkUserId: user?.id,
+      });
+
       await Workflow.findOneAndUpdate(
         { _id: workflowId, userId: dbUser?._id },
         {
@@ -207,12 +227,6 @@ export const onPublishWorkflow = async ({
           },
         }
       );
-
-      await axios.post("http://localhost:3000/api/automate", {
-        publish,
-        workflowId,
-        _id: dbUser?._id.toString(),
-      });
 
       revalidatePath(`/workflows/editor/${workflowId}`);
     }
@@ -423,15 +437,17 @@ export const deleteNode = async (
       if (nodeType === "Google Drive") {
         await Workflow.findByIdAndUpdate(workflowId, {
           $set: {
-            changes: "true",
-            files: "false",
-            fileId: "",
-            folderId: "",
-            channelId: "",
-            isListening: false,
-            supportedAllDrives: "true",
-            includeRemoved: "false",
-            restrictToMyDrive: "false",
+            googleDriveWatchTrigger: {
+              isListening: false,
+              changes: "true",
+              files: "false",
+              folderId: "",
+              supportedAllDrives: "true",
+              includeRemoved: "false",
+              restrictToMyDrive: "false",
+              fileId: "",
+              channelId: "",
+            },
           },
         });
       } else {
@@ -489,11 +505,13 @@ export const getCurrentTrigger = async (workflowId: string) => {
     const workflow = await Workflow.findById<WorkflowType>(workflowId, {
       parentTrigger: 1,
       parentId: 1,
+      publish: 1,
     });
     if (workflow) {
       return JSON.stringify({
         type: workflow.parentTrigger,
         id: workflow.parentId,
+        publish: workflow.publish,
       });
     }
     return JSON.stringify({ type: "Google Drive", id: "" });

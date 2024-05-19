@@ -36,12 +36,6 @@ const ServiceAction = ({ workflowId }: ServiceActionProps) => {
     user: "",
   });
 
-  // finding an edge between the source and the target(selectedNode) node
-  const edge = edges.find(({ target }) => target === selectedNode.id);
-
-  // finding the type of the source node
-  const sourceNodeType = nodes.find((node) => node.id === edge?.source);
-
   // loading the channel members
   useEffect(() => {
     if (selectedNode.type === "Discord" || selectedNode.type === "Slack") {
@@ -69,37 +63,30 @@ const ServiceAction = ({ workflowId }: ServiceActionProps) => {
   }, [selectedNode.id, selectedNode.type, workflowId]);
 
   useEffect(() => {
-    if (selectedNode.type === "Discord" || selectedNode.type === "Slack") {
+    if (
+      selectedNode.type === "Discord" ||
+      selectedNode.type === "Slack" ||
+      selectedNode.type === "Google Drive"
+    ) {
       (async () => {
-        if (edge && sourceNodeType) {
-          setLoading(true);
+        // finding an edge between the source and the target(selectedNode) node
+        const edge = edges.find(({ target }) => target === selectedNode.id);
+
+        // finding the type of the source node
+        const sourceNodeType = nodes.find((node) => node.id === edge?.source);
+
+        setLoading(true);
+        if (
+          (
+          edge &&
+          sourceNodeType &&
+          sourceNodeType?.type === "Discord" || sourceNodeType?.type === "Slack")
+        ) {
           const triggerResponse = await getTrigger(
             workflowId,
-            edge.source,
+            edge!.source,
             sourceNodeType.type as ConnectionTypes
           );
-
-          const actionResponse = await getTrigger(
-            workflowId,
-            selectedNode.id,
-            selectedNode.type as ConnectionTypes
-          );
-
-          if (actionResponse) {
-            const { success, data, message, error } =
-              JSON.parse(actionResponse);
-            if (success) {
-              setActionData({
-                trigger: data.action.trigger,
-                type: data.action.mode,
-                message: data.action.message,
-                user: data.action.user,
-              });
-            } else {
-              if (message) toast.message(message);
-              else toast.error(error);
-            }
-          }
 
           if (triggerResponse) {
             const { success, data, message, error } =
@@ -116,12 +103,34 @@ const ServiceAction = ({ workflowId }: ServiceActionProps) => {
               else toast.error(error);
             }
           }
+        } else if (sourceNodeType?.type === "Google Drive")
+          setDefaultMessage("A change occur in your Google Drive: ");
 
-          setLoading(false);
+        const actionResponse = await getTrigger(
+          workflowId,
+          selectedNode.id,
+          selectedNode.type as ConnectionTypes
+        );
+
+        if (actionResponse) {
+          const { success, data, message, error } = JSON.parse(actionResponse);
+          if (success) {
+            setActionData({
+              trigger: data.action.trigger,
+              type: data.action.mode,
+              message: data.action.message,
+              user: data.action.user,
+            });
+          } else {
+            if (message) toast.message(message);
+            else toast.error(error);
+          }
         }
+
+        setLoading(false);
       })();
     }
-  }, [selectedNode.type, workflowId, selectedNode.id, edge, sourceNodeType]);
+  }, [selectedNode.type, workflowId, selectedNode.id, edges, nodes]);
 
   return (
     <Card>

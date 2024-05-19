@@ -108,3 +108,8 @@ export const UnsupportedTypes = new Set([
   "formula",
   "verification",
 ]);
+
+export const mapper = {
+  true: true,
+  false: false,
+};

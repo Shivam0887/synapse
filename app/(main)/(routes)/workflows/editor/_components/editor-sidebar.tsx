@@ -41,10 +41,13 @@ import ActionTooltip from "@/components/globals/action-tooltip";
 import { Button } from "@/components/ui/button";
 import { getTrigger } from "../../../connections/_actions/connection-action";
 
-const EditorSidebar = () => {
+type EditorSidebarProps = {
+  isPublished: boolean;
+};
+
+const EditorSidebar = ({ isPublished }: EditorSidebarProps) => {
   const { nodes, selectedNode } = useEditor().state.editor;
   const { nodeConnection } = useNodeConnections();
-  const { googleFile } = useStore();
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [parentTrigger, setParentTrigger] = useState({
     type: "Google Drive",
@@ -100,7 +103,7 @@ const EditorSidebar = () => {
       const response = await getCurrentTrigger(editorId);
       if (response) {
         const data = JSON.parse(response);
-        setParentTrigger(data);
+        setParentTrigger({ id: data.id, type: data.type });
       }
     })();
   }, [editorId]);
@@ -151,116 +154,137 @@ const EditorSidebar = () => {
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
         <Separator />
-        <TabsContent value="actions" className="h-screen overflow-y-scroll">
-          <div className="flex flex-col gap-4 p-4 pb-56">
-            {Object.entries(CustomNodeDefaultValues)
-              .filter(
-                ([key]) =>
-                  !nodes.length ||
-                  !(
-                    !!nodes.length &&
-                    key === "Google Drive" &&
-                    isGoogleDriveNodeExists
-                  )
-              )
-              .map(([key, { description }]) => (
-                <Card
-                  key={key}
-                  draggable
-                  className="w-full cursor-grab border-black dark:border-neutral-700 dark:bg-neutral-900"
-                  onDragStart={(e) => onDrapStart(e, key as CustomNodeTypes)}
-                >
-                  <CardHeader className="flex flex-row gap-4 p-4 items-center">
-                    <div>
-                      <CustomNodeIcon type={key as CustomNodeTypes} />
-                    </div>
-                    <div>
-                      <CardTitle className="text-base">{key}</CardTitle>
-                      <CardDescription>{description}</CardDescription>
-                    </div>
-                  </CardHeader>
-                </Card>
-              ))}
-          </div>
+        <TabsContent
+          value="actions"
+          className="relative h-screen overflow-y-scroll"
+        >
+          <>
+            {isPublished && (
+              <div className="absolute h-[70%] backdrop-blur-[2px] font-medium w-full z-50 flex items-center justify-center">
+                Unpublish the workflow to continue!
+              </div>
+            )}
+            <div className="flex flex-col gap-4 p-4 pb-56">
+              {Object.entries(CustomNodeDefaultValues)
+                .filter(
+                  ([key]) =>
+                    !nodes.length ||
+                    !(
+                      !!nodes.length &&
+                      key === "Google Drive" &&
+                      isGoogleDriveNodeExists
+                    )
+                )
+                .map(([key, { description }]) => (
+                  <Card
+                    key={key}
+                    draggable
+                    className="w-full cursor-grab border-black dark:border-neutral-700 dark:bg-neutral-900"
+                    onDragStart={(e) => onDrapStart(e, key as CustomNodeTypes)}
+                  >
+                    <CardHeader className="flex flex-row gap-4 p-4 items-center">
+                      <div>
+                        <CustomNodeIcon type={key as CustomNodeTypes} />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">{key}</CardTitle>
+                        <CardDescription>{description}</CardDescription>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+            </div>
+          </>
         </TabsContent>
         <TabsContent
           value="settings"
-          className="h-[70vh] overflow-y-scroll flex flex-col gap-4 p-4"
+          className="relative h-[70vh] overflow-y-scroll flex flex-col gap-4 p-4"
         >
-          <div className="px-2 py-4 text-center space-y-4 text-xl font-bold">
-            <p>{selectedNode.data.title}</p>
-            {!(
-              selectedNode.type === "Notion" ||
-              selectedNode.type === "None" ||
-              selectedNode.type === "AI"
-            ) && (
-              <div className="space-y-3">
-                <div className="text-sm flex flex-col justify-center text-neutral-500">
-                  <div className="flex gap-2 items-center justify-center">
-                    Current Trigger: {parentTrigger.type}
-                    <TooltipProvider>
-                      <ActionTooltip
-                        label={<Info className="w-4 h-4 cursor-pointer" />}
-                        side="bottom"
-                      >
-                        <p className="text-xs">
-                          The node which initiates the workflow.
-                        </p>
-                      </ActionTooltip>
-                    </TooltipProvider>
-                  </div>
-                  {parentTrigger.id && <p>ID:{parentTrigger.id}</p>}
-                </div>
-                <Button variant="secondary" size="sm" onClick={onChangeTrigger}>
-                  Change trigger
-                </Button>
+          <>
+            {isPublished && (
+              <div className="absolute h-full w-full font-medium z-50 backdrop-blur-[2px] flex items-center justify-center">
+                Unpublish the workflow to continue!
               </div>
             )}
-          </div>
-
-          {selectedNode.type === "None" ? (
-            <div className="h-full flex items-center justify-center w-full">
-              Please select a node to continue.
+            <div className="px-2 py-4 text-center space-y-4 text-xl font-bold">
+              <p>{selectedNode.data.title}</p>
+              {!(
+                selectedNode.type === "Notion" ||
+                selectedNode.type === "None" ||
+                selectedNode.type === "AI"
+              ) && (
+                <div className="space-y-3">
+                  <div className="text-sm flex flex-col justify-center text-neutral-500">
+                    <div className="flex gap-2 items-center justify-center">
+                      Current Trigger: {parentTrigger.type}
+                      <TooltipProvider>
+                        <ActionTooltip
+                          label={<Info className="w-4 h-4 cursor-pointer" />}
+                          side="bottom"
+                        >
+                          <p className="text-xs">
+                            The node which initiates the workflow.
+                          </p>
+                        </ActionTooltip>
+                      </TooltipProvider>
+                    </div>
+                    {parentTrigger.id && <p>ID:{parentTrigger.id}</p>}
+                  </div>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={onChangeTrigger}
+                  >
+                    Change trigger
+                  </Button>
+                </div>
+              )}
             </div>
-          ) : (
-            <Accordion type="multiple">
-              <AccordionItem value="account">
-                <AccordionTrigger className="!no-underline">
-                  Account
-                </AccordionTrigger>
-                <AccordionContent>
-                  {selectedNode.type && (
-                    <ServiceConnection
-                      workflowId={editorId}
+
+            {selectedNode.type === "None" ? (
+              <div className="h-full flex items-center justify-center w-full">
+                Please select a node to continue.
+              </div>
+            ) : (
+              <Accordion type="multiple">
+                <AccordionItem value="account">
+                  <AccordionTrigger className="!no-underline">
+                    Account
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    {selectedNode.type && (
+                      <ServiceConnection
+                        workflowId={editorId}
+                        isConnected={isConnected}
+                      />
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="trigger">
+                  <AccordionTrigger>Trigger</AccordionTrigger>
+                  <AccordionContent>
+                    <ServiceTrigger workflowId={editorId} />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="action">
+                  <AccordionTrigger>Action</AccordionTrigger>
+                  <AccordionContent>
+                    <ServiceAction workflowId={editorId} />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="test">
+                  <AccordionTrigger>Test</AccordionTrigger>
+                  <AccordionContent>
+                    <ServiceInteraction
+                      nodeConnection={nodeConnection}
                       isConnected={isConnected}
+                      nodeType={selectedNode.type as ConnectionTypes}
                     />
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="trigger">
-                <AccordionTrigger>Trigger</AccordionTrigger>
-                <AccordionContent>
-                  <ServiceTrigger workflowId={editorId} />
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="action">
-                <AccordionTrigger>Action</AccordionTrigger>
-                <AccordionContent>
-                  <ServiceAction workflowId={editorId} />
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="test">
-                <AccordionTrigger>Test</AccordionTrigger>
-                <AccordionContent>
-                  <ServiceInteraction
-                    nodeConnection={nodeConnection}
-                    isConnected={isConnected}
-                    nodeType={selectedNode.type as ConnectionTypes}
-                  />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          )}
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            )}
+          </>
         </TabsContent>
       </Tabs>
     </aside>

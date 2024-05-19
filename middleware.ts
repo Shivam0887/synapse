@@ -7,13 +7,10 @@ const isProtectedRoute = createRouteMatcher([
   "/settings(.*)",
   "/billing(.*)",
   "/api/payment",
-  "/api/drive",
   "/api/drive/settings",
-  "/api/drive/watch",
   "/api/discord",
   "/api/slack",
   "/api/ai/google",
-  // "/api/automate",
 ]);
 
 export default clerkMiddleware((auth, req) => {

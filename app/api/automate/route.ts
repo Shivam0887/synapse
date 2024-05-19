@@ -1,14 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, z } from "zod";
-// Import the necessary modules from discord.js
-import {
-  Client,
-  GatewayIntentBits,
-  GuildMember,
-  Message,
-  MessageReaction,
-  PartialMessageReaction,
-} from "discord.js";
+
 import { Discord, DiscordType } from "@/models/discord-model";
 import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { Slack, SlackType } from "@/models/slack-model";
@@ -16,13 +8,20 @@ import { Notion, NotionType } from "@/models/notion-model";
 import { ConnectionTypes, ResultDataType, ResultType } from "@/lib/types";
 import ConnectToDB from "@/lib/connectToDB";
 import { Types } from "mongoose";
-import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
-import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 
 import axios from "axios";
 import { User, UserType } from "@/models/user-model";
-import { getUser } from "@/app/(main)/(routes)/connections/_actions/get-user";
+import {
+  GuildMember,
+  Message,
+  MessageReaction,
+  PartialMessageReaction,
+} from "discord.js";
 
+// Import the necessary modules from discord.js
+import { Client, GatewayIntentBits } from "discord.js";
+import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
+import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 // Create a new client instance
 const DiscordClient = new Client({
   intents: [
@@ -40,9 +39,20 @@ const reqSchema = z.object({
   publish: z.boolean(),
   workflowId: z.string(),
   _id: z.string(),
+  clerkUserId: z.string(),
 });
 
 type ConnectionType = {
+  webhookUrl?: string | null;
+  nodeId: string;
+  workflowId: string;
+  accessToken: string;
+  action?: {
+    mode: "default" | "custom";
+    message: string;
+    trigger: string | null;
+    user?: string | null;
+  } | null,
   connections: {
     discordId: Pick<DiscordType, "_id" | "webhookUrl" | "action">[];
     slackId: Pick<SlackType, "_id" | "webhookUrl" | "action" | "accessToken">[];
@@ -52,107 +62,21 @@ type ConnectionType = {
 
 const result: ResultType = {
   Discord: {
-    metaData: {channelId: "", guildId: "", trigger: ""},
-    result: []
+    metaData: { channelId: "", guildId: "", trigger: "" },
+    result: [],
   },
   Slack: {
-    metaData: {channelId: "", teamId: "", trigger: ""},
-    result: []
+    metaData: { channelId: "", teamId: "", trigger: "" },
+    result: [],
   },
   "Google Drive": {
-    result: []
-  }
+    result: [],
+  },
 };
 
-async function dfs(
-  _id: string,
-  nodeType: ConnectionTypes,
-  triggerType: ConnectionTypes | "None",
-  connections?: {
-    discordId: Types.ObjectId[];
-    slackId: Types.ObjectId[];
-    notionId: Types.ObjectId[];
-  }
-) {
-  if (triggerType === "Notion" || triggerType === "None") return;
-  if (triggerType === "Google Drive" && connections) {
-    await Promise.all(
-      connections.discordId.map(
-        async (_id) => await dfs(_id.toJSON(), "Discord", triggerType)
-      )
-    );
+// Currently logged-in user-id
+let UserId = "";
 
-    await Promise.all(
-      connections.slackId.map(
-        async (_id) => await dfs(_id.toJSON(), "Slack", triggerType)
-      )
-    );
-  } else if(nodeType === "Discord" || nodeType === "Slack"){
-    const Model = nodeType === "Discord" ? Discord : Slack;
-    const collection = await Model.findById<ConnectionType>(_id, { _id: 0,
-      connections: 1,
-    })
-      .populate({
-        path: "connections.discordId",
-        select: "_id webhookUrl action",
-        model: Discord,
-      })
-      .populate({
-        path: "connections.slackId",
-        select: "_id webhookUrl action accessToken",
-        model: Slack,
-      })
-      .populate({
-        path: "connections.notionId",
-        select: "nodeId workflowId",
-        model: Notion,
-      });
-
-    if (collection) {
-      await Promise.all(
-        collection.connections.discordId.map(
-          async ({ _id, action, webhookUrl }) => {
-            await dfs(_id!.toString(), "Discord", triggerType);
-            if (action && webhookUrl) {
-              result[triggerType]["result"].push({
-                action,
-                webhookUrl,
-                nodeType: "Discord",
-              });
-            }
-          })
-      );
-
-      await Promise.all(
-        collection.connections.slackId.map(
-          async ({ _id, action, webhookUrl, accessToken }) => {
-            await dfs(_id!.toString(), "Slack", triggerType);
-            if (action && webhookUrl && accessToken) {
-              result[triggerType]["result"].push({
-                action,
-                webhookUrl,
-                nodeType: "Slack",
-                accessToken,
-              });
-            }
-          })
-      );
-
-      collection.connections.notionId.forEach(
-        ({ nodeId, workflowId }) => {
-          if(workflowId){
-            result[triggerType]["result"].push({
-              nodeType: "Notion",
-              nodeId,
-              workflowId: workflowId.toString()
-            });
-          }
-        }
-      )
-    }
-  }
-}
- 
 const onMessageSend = async ({
   nodeType,
   action,
@@ -162,7 +86,11 @@ const onMessageSend = async ({
   accessToken,
 }: ResultDataType) => {
   if (nodeType === "Notion") {
-    await onCreatePage({ workflowId: workflowId!, isTesting: false, nodeId: nodeId! });
+    await onCreatePage({
+      workflowId: workflowId!,
+      isTesting: false,
+      nodeId: nodeId!,
+    });
   } else if (action?.trigger) {
     if (nodeType === "Discord") {
       if (action.trigger === "1") {
@@ -185,8 +113,139 @@ const onMessageSend = async ({
   }
 };
 
-// Currently logged-in user-id 
-let UserId = "";
+async function dfs(
+  _id: string,
+  nodeType: ConnectionTypes,
+  triggerType: ConnectionTypes | "None",
+  isInitial: boolean
+) {
+  if (triggerType === "Notion" || triggerType === "None") return;
+  if (nodeType === "Discord" || nodeType === "Slack" || nodeType === "Notion") {
+    const Model = nodeType === "Discord" ? Discord : nodeType === "Slack" ? Slack : Notion;
+    const collection = await Model.findById<ConnectionType>(_id, {
+      _id: 0,
+      action: 1,
+      webhookUrl: 1,
+      nodeId: 1,
+      workflowId: 1,
+      accessToken: 1,
+      connections: 1,
+    })
+      .populate({
+        path: "connections.discordId",
+        select: "_id webhookUrl action",
+        model: Discord,
+      })
+      .populate({
+        path: "connections.slackId",
+        select: "_id webhookUrl action accessToken",
+        model: Slack,
+      })
+      .populate({
+        path: "connections.notionId",
+        select: "nodeId workflowId",
+        model: Notion,
+      });
+    
+    if(isInitial && collection){
+      const { accessToken, nodeId, workflowId, action, webhookUrl } = collection;
+      if(nodeType === "Discord" && action && webhookUrl){
+          result[triggerType]["result"].push({
+            action,
+            webhookUrl,
+            nodeType: "Discord",
+          });
+      } else if(nodeType === "Slack" && action && webhookUrl && accessToken){
+        result[triggerType]["result"].push({
+          action,
+          webhookUrl,
+          nodeType: "Slack",
+          accessToken,
+        });
+      } else if(nodeType === "Notion" && workflowId){
+        result[triggerType]["result"].push({
+          nodeType: "Notion",
+          nodeId,
+          workflowId: workflowId.toString(),
+        });
+      }
+    }
+
+    if (collection) {
+      await Promise.all(
+        collection.connections.discordId.map(
+          async ({ _id, action, webhookUrl }) => {
+            await dfs(_id!.toString(), "Discord", triggerType, false);
+            if (action && webhookUrl) {
+              result[triggerType]["result"].push({
+                action,
+                webhookUrl,
+                nodeType: "Discord",
+              });
+            }
+          }
+        )
+      );
+
+      await Promise.all(
+        collection.connections.slackId.map(
+          async ({ _id, action, webhookUrl, accessToken }) => {
+            await dfs(_id!.toString(), "Slack", triggerType, false);
+            if (action && webhookUrl && accessToken) {
+              result[triggerType]["result"].push({
+                action,
+                webhookUrl,
+                nodeType: "Slack",
+                accessToken,
+              });
+            }
+          }
+        )
+      );
+
+      collection.connections.notionId.forEach(({ nodeId, workflowId }) => {
+        if (workflowId) {
+          result[triggerType]["result"].push({
+            nodeType: "Notion",
+            nodeId,
+            workflowId: workflowId.toString(),
+          });
+        }
+      });
+    }
+  }
+}
+
+const onMessageCreate = async (message: Message) => {
+  const { channelId } = result["Discord"]["metaData"];
+  if (!message.author.bot && channelId === message.channelId) {
+    result["Discord"]["result"].forEach((data) => {
+      if (!(!!message.mentions.users.size || !!message.mentions.roles.size))
+        onMessageSend(data);
+    });
+
+    result["Discord"]["result"].forEach((data) => {
+      if (!!message.mentions.users.size || !!message.mentions.roles.size)
+        onMessageSend(data);
+    });
+  }
+};
+
+const onMessageReactionAdd = async (
+  reaction: MessageReaction | PartialMessageReaction
+) => {
+  const { channelId } = result["Discord"]["metaData"];
+  if (channelId === reaction.message.channelId) {
+    result["Discord"]["result"].forEach((data) => onMessageSend(data));
+  }
+};
+
+const onGuildMemberAdd = async (member: GuildMember) => {
+  const { guildId } = result["Discord"]["metaData"];
+  if (guildId === member.guild.id) {
+    result["Discord"]["result"].forEach((data) => onMessageSend(data));
+  }
+};
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -198,7 +257,7 @@ export async function GET(req: NextRequest) {
   const channelType = searchParams.get("channelType");
   const id = searchParams.get("userId");
 
-  if(id) UserId = id;
+  if (id) UserId = id;
 
   try {
     if (eventType && UserId) {
@@ -207,9 +266,9 @@ export async function GET(req: NextRequest) {
         WorkflowToSlack: 1,
       });
 
-      if(dbUser){
+      if (dbUser) {
         const type = eventType as "0" | "1" | "2" | "3" | "4";
-        
+
         dbUser.WorkflowToSlack.forEach(({ publish, result, metaData }) => {
           if (publish) {
             const isChannelIdExists = !channelId
@@ -218,31 +277,109 @@ export async function GET(req: NextRequest) {
             const isTeamIdExists = !teamId
               ? false
               : metaData?.teamId === teamId;
-            const channel_type = !channelType ? false : channelType === "channel";
+            const channel_type = !channelType
+              ? false
+              : channelType === "channel";
 
-            if((type === "0" || type === "1") && type === metaData?.trigger && isChannelIdExists && channel_type){
-              result.forEach((data) => { 
-                const { webhookUrl, accessToken, nodeType, nodeId, action, workflowId } = data;
-                onMessageSend({webhookUrl, accessToken, nodeType, nodeId, action, workflowId})
-              })
-            } else if(type === "2" && type === metaData?.trigger && isChannelIdExists){
-              result.forEach((data) => { 
-                const { webhookUrl, accessToken, nodeType, nodeId, action, workflowId } = data;
-                onMessageSend({webhookUrl, accessToken, nodeType, nodeId, action, workflowId})
-              })
-            } else if(type === "3" && type === metaData?.trigger && isChannelIdExists && isChannel){
-              result.forEach((data) => { 
-                const { webhookUrl, accessToken, nodeType, nodeId, action, workflowId } = data;
-                onMessageSend({webhookUrl, accessToken, nodeType, nodeId, action, workflowId})
-              })
-            } else if(type === "4" && type === metaData?.trigger && isChannelIdExists && channel_type && isTeamIdExists){
-              result.forEach((data) => { 
-                const { webhookUrl, accessToken, nodeType, nodeId, action, workflowId } = data;
-                onMessageSend({webhookUrl, accessToken, nodeType, nodeId, action, workflowId})
-              })
+            if (
+              (type === "0" || type === "1") &&
+              type === metaData?.trigger &&
+              isChannelIdExists &&
+              channel_type
+            ) {
+              result.forEach((data) => {
+                const {
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                } = data;
+                onMessageSend({
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                });
+              });
+            } else if (
+              type === "2" &&
+              type === metaData?.trigger &&
+              isChannelIdExists
+            ) {
+              result.forEach((data) => {
+                const {
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                } = data;
+                onMessageSend({
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                });
+              });
+            } else if (
+              type === "3" &&
+              type === metaData?.trigger &&
+              isChannelIdExists &&
+              isChannel
+            ) {
+              result.forEach((data) => {
+                const {
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                } = data;
+                onMessageSend({
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                });
+              });
+            } else if (
+              type === "4" &&
+              type === metaData?.trigger &&
+              isChannelIdExists &&
+              channel_type &&
+              isTeamIdExists
+            ) {
+              result.forEach((data) => {
+                const {
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                } = data;
+                onMessageSend({
+                  webhookUrl,
+                  accessToken,
+                  nodeType,
+                  nodeId,
+                  action,
+                  workflowId,
+                });
+              });
             }
           }
-        })
+        });
       }
     }
     return new NextResponse(null, { status: 200 });
@@ -254,87 +391,96 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { publish, workflowId, _id } = reqSchema.parse(await req.json());
-    
+    const { publish, workflowId, _id, clerkUserId } = reqSchema.parse(
+      await req.json()
+    );
+
     ConnectToDB();
-    
+
     const dbUser = await User.findById(_id, {
       WorkflowToDiscord: 1,
       WorkflowToSlack: 1,
+      WorkflowToDrive: 1,
     });
-    
+
     if (dbUser) {
       UserId = _id;
       const WorkflowToDiscord = dbUser.WorkflowToDiscord;
       const WorkflowToSlack = dbUser.WorkflowToSlack;
+      const WorkflowToDrive = dbUser.WorkflowToDrive;
 
-      const workflow = await Workflow.findById<WorkflowType>(workflowId, {
+      const workflow = await Workflow.findById<Pick<WorkflowType, '_id' | 'parentId' | 'parentTrigger' | 'googleDriveWatchTrigger'>>(workflowId, {
         parentTrigger: 1,
         parentId: 1,
+        googleDriveWatchTrigger: 1
       });
 
       if (workflow?.parentTrigger && publish) {
-        if (workflow.parentTrigger === "Google Drive") {
-          const collection = await Workflow.findById<Pick<WorkflowType, "googleDriveWatchTrigger">>(
-            workflowId,
-            { googleDriveWatchTrigger: 1 }
+        if (workflow.parentTrigger === "Google Drive" && workflow.googleDriveWatchTrigger?.connections) {
+          const { discordId, notionId, slackId } = workflow.googleDriveWatchTrigger.connections
+          await Promise.all(discordId.map(async ({ _id }) => {
+            await dfs(_id.toString(), "Discord", workflow.parentTrigger, true);
+          }));
+
+          await Promise.all(slackId.map(async ({ _id }) => {
+            await dfs(_id.toString(), "Slack", workflow.parentTrigger, true);
+          }));
+
+          await Promise.all(notionId.map(async ({ _id }) => {
+            await dfs(_id.toString(), "Notion", workflow.parentTrigger, true);
+          }));
+
+          WorkflowToDrive.set(workflowId, {
+            result: result["Google Drive"]["result"],
+          });
+          await dbUser.save();
+
+          await axios.get(
+            `http://localhost:3000/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
           );
-          if (collection && collection.googleDriveWatchTrigger?.connections) {
-            await dfs(
-              "",
-              "Google Drive",
-              "Google Drive",
-              collection.googleDriveWatchTrigger.connections
-            );
-          }
-        } else if (workflow.parentId && workflow.parentTrigger !== "None") {
+        } else if (workflow.parentId && (workflow.parentTrigger === "Discord" || workflow.parentTrigger === "Slack")) {
           const Model = workflow.parentTrigger === "Discord" ? Discord : Slack;
           const collection = await Model.findById(workflow.parentId);
 
-          if (workflow.parentTrigger === "Discord" && collection.channelId && collection.guildId && collection.trigger){
+          if (
+            workflow.parentTrigger === "Discord" &&
+            collection.channelId &&
+            collection.guildId &&
+            collection.trigger
+          ) {
+            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false);
             result["Discord"]["metaData"] = {
               channelId: collection.channelId,
               guildId: collection.guildId,
               trigger: collection.trigger,
             };
+            WorkflowToDiscord.set(workflowId, {
+              publish,
+              metaData: result["Discord"]["metaData"],
+              result: result["Discord"]["result"],
+            });
+            await dbUser.save();
           }
 
-          if(workflow.parentTrigger === "Slack" && collection.channelId && collection.teamId && collection.trigger){
-            axios
-                .get("http://localhost:3000/api/automate", {
-                  params: {
-                    userId: _id,
-                  },
-                })
-                .then((data) => console.log(data.status))
-                .catch((error) => console.log(error));
-
+          if (
+            workflow.parentTrigger === "Slack" &&
+            collection.channelId &&
+            collection.teamId &&
+            collection.trigger
+          ) {
+            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false);
             result["Slack"]["metaData"] = {
               channelId: collection.channelId,
               teamId: collection.teamId,
               trigger: collection.trigger,
             };
+            WorkflowToSlack.set(workflowId, {
+              publish,
+              metaData: result["Slack"]["metaData"],
+              result: result["Slack"]["result"],
+            });
+            await dbUser.save();
           }
-
-          if (collection) 
-            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger);
-        }
-
-        if (workflow.parentTrigger === "Discord") {
-          WorkflowToDiscord.set(workflowId, {
-            publish,
-            metaData: result["Discord"]["metaData"],
-            result: result["Discord"]["result"],
-          });
-          await dbUser.save();
-        }
-        if (workflow.parentTrigger === "Slack") {
-          WorkflowToSlack.set(workflowId, {
-            publish,
-            metaData: result["Slack"]["metaData"],
-            result: result["Slack"]["result"],
-          });
-          await dbUser.save();
         }
       }
 
@@ -345,56 +491,39 @@ export async function POST(req: NextRequest) {
         } else if (workflow.parentTrigger === "Slack" && WorkflowToSlack.has(workflowId)) {
           WorkflowToSlack.delete(workflowId);
           await dbUser.save();
+        } else if (workflow?.parentTrigger === "Google Drive") {
+          WorkflowToDrive.delete(workflowId);
+          await dbUser.save();
+          await Workflow.findByIdAndUpdate(workflowId, {
+            $set: {
+              "googleDriveWatchTrigger.isListening": false,
+            },
+          });
+          await axios.get(
+            `http://localhost:3000/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
+          );
         }
       }
 
-      // const onMessageCreate = async (message: Message) => {
-      //   result["Discord"]["metaData"].forEach(({ channelId }) => {
-      //     if (!message.author.bot && channelId === message.channelId) {
-      //       result["Discord"]["0"].forEach((data) => {
-      //         if (!(!!message.mentions.users.size || !!message.mentions.roles.size))
-      //           onMessageSend({ ...data, workflowId });
-      //       });
+      if (workflow?.parentTrigger === "Discord") {
+        if (publish) {
+          console.log("published");
+          const { trigger } = result["Discord"]["metaData"];
+          if (trigger === "0" || trigger === "1") DiscordClient.on("messageCreate", onMessageCreate);
+          else if (trigger === "2") DiscordClient.on("messageReactionAdd", onMessageReactionAdd);
+          else if (trigger === "3") DiscordClient.on("guildMemberAdd", onGuildMemberAdd);
+        } 
+        else {
+          console.log("Unpublished");
+          DiscordClient.removeListener("messageCreate", onMessageCreate);
+          DiscordClient.removeListener("messageReactionAdd", onMessageReactionAdd);
+          DiscordClient.removeListener("guildMemberAdd", onGuildMemberAdd);
+        }
 
-      //       result["Discord"]["1"].forEach((data) => {
-      //         if (!!message.mentions.users.size || !!message.mentions.roles.size)
-      //           onMessageSend({ ...data, workflowId });
-      //       });
-      //     }
-      //   });
-      // };
-
-      // const onMessageReactionAdd = async (reaction: MessageReaction | PartialMessageReaction) => {
-      //   result["Discord"]["metaData"].forEach(({ channelId }) => {
-      //     if (channelId === reaction.message.channelId) {
-      //       result["Discord"]["2"].forEach((data) => onMessageSend({ ...data, workflowId }));
-      //     }
-      //   });
-      // };
-
-      // const onGuildMemberAdd = async (member: GuildMember) => {
-      //   result["Discord"]["metaData"].forEach(({ guildId }) => {
-      //     if (guildId === member.guild.id) {
-      //       result["Discord"]["3"].forEach((data) => onMessageSend({ ...data, workflowId }));
-      //     }
-      //   });
-      // };
-
-      // if (publish) {
-      //   console.log("published");
-      //   DiscordClient.on("messageCreate", onMessageCreate);
-      //   DiscordClient.on("messageReactionAdd", onMessageReactionAdd);
-      //   DiscordClient.on("guildMemberAdd", onGuildMemberAdd);
-      // } else {
-      //   console.log("Unpublished");
-      //   DiscordClient.off("messageCreate", onMessageCreate);
-      //   DiscordClient.off("messageReactionAdd", onMessageReactionAdd);
-      //   DiscordClient.off("guildMemberAdd", onGuildMemberAdd);
-      // }
-
-      // DiscordClient.on("error", (error) =>
-      //   console.log("discord socket error:", error.message)
-      // );
+        DiscordClient.on("error", (error) =>
+          console.log("discord socket error:", error.message)
+        );
+      }
     }
     return new NextResponse(null, { status: 200 });
   } catch (error: any) {
@@ -407,4 +536,3 @@ export async function POST(req: NextRequest) {
     });
   }
 }
-

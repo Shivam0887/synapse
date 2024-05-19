@@ -38,36 +38,33 @@ export async function POST(req: NextRequest) {
 
     ConnectToDB();
 
-    const workflow = await Workflow.findById<WorkflowType>(workflowId, { parentTrigger: 1, parentId: 1 })
-    if(workflow){
-
-    await Workflow.findByIdAndUpdate(workflowId, {
-      $set: {
-        googleDriveWatchTrigger: {
-          changes,
-          files,
-          fileId,
-          folderId,
-          isListening,
-          supportedAllDrives,
-          pageSize,
-          includeRemoved,
-          restrictToMyDrive,
-        },
-        parentTrigger: !isListening && workflow.parentTrigger === "Google Drive" ? "None" : workflow.parentTrigger,
-        parentId: !isListening && workflow.parentTrigger === "Google Drive" ? "" : workflow.parentId,
-      },
+    const workflow = await Workflow.findById<WorkflowType>(workflowId, {
+      googleDriveWatchTrigger: 1,
     });
+    if (workflow) {
+      await Workflow.findByIdAndUpdate(workflowId, {
+        $set: {
+          "googleDriveWatchTrigger.changes": changes,
+          "googleDriveWatchTrigger.files": files,
+          "googleDriveWatchTrigger.fileId": fileId,
+          "googleDriveWatchTrigger.folderId": folderId,
+          "googleDriveWatchTrigger.isListening": isListening,
+          "googleDriveWatchTrigger.supportedAllDrives": supportedAllDrives,
+          "googleDriveWatchTrigger.pageSize": pageSize,
+          "googleDriveWatchTrigger.includeRemoved": includeRemoved,
+          "googleDriveWatchTrigger.restrictToMyDrive": restrictToMyDrive,
+        },
+      });
 
-    revalidatePath(`/workflows/editor/${workflowId}`)
+      revalidatePath(`/workflows/editor/${workflowId}`);
 
-    const message = !isListening
-      ? "trigger settings reset successfully!"
-      : "trigger settings save successfully!";
-    return new NextResponse(message, {
-      status: 201,
-    })
-  }
+      const message = !isListening
+        ? "trigger settings reset successfully!"
+        : "trigger settings save successfully!";
+      return new NextResponse(message, {
+        status: 201,
+      });
+    }
   } catch (error: any) {
     console.log(error?.message);
     return new NextResponse("Oops! something went wrong, try again", {

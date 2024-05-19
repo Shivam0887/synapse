@@ -1,7 +1,6 @@
 import axios from "axios";
 import ConnectToDB from "@/lib/connectToDB";
 import { currentUser } from "@clerk/nextjs/server";
-import { APITextChannel } from "discord-api-types/v10";
 import { NextResponse, NextRequest } from "next/server";
 
 import { Discord } from "@/models/discord-model";
@@ -67,7 +66,7 @@ export async function GET(req: NextRequest) {
       );
 
       const channel = channels?.data?.find(
-        (channel: APITextChannel) => channel.guild_id === UserGuild[0].id
+        (channel: any) => channel.guild_id === UserGuild[0].id
       );
 
       const nodeMetaData = await Workflow.findById(dbUser?.currentWorkflowId, {

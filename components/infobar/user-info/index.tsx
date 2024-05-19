@@ -1,5 +1,7 @@
 "use client";
 import { getUser } from "@/app/(main)/(routes)/connections/_actions/get-user";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,9 +9,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
 import { useStore } from "@/providers/store-provider";
-import { SignOutButton } from "@clerk/nextjs";
+import { SignOutButton, UserProfile } from "@clerk/nextjs";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { LogOut } from "lucide-react";
+import { LogOut, Settings } from "lucide-react";
 import Image from "next/image";
 import React, { useEffect, useState } from "react";
 
@@ -74,6 +76,28 @@ const UserInfo = ({ isHome }: { isHome: boolean }) => {
               </div>
             </div>
           </DropdownMenuItem>
+          <div>
+            <Dialog>
+              <DialogTrigger>
+                <Button variant="secondary" size="sm" className="space-x-2 p-2">
+                  <Settings className="w-3 h-3 text-neutral-400" />
+                  <p className="text-xs">manage account</p>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl mx-auto p-6 pt-8">
+                <div>
+                  <UserProfile
+                    routing="hash"
+                    appearance={{
+                      elements: {
+                        cardBox: "max-w-[716px] h-[512px]",
+                      },
+                    }}
+                  />
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
           <Separator />
           <DropdownMenuItem>
             <SignOutButton redirectUrl="/">
