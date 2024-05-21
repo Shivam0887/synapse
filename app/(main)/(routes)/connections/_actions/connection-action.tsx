@@ -2,6 +2,7 @@
 
 import ConnectToDB from "@/lib/connectToDB";
 import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
+import { absolutePathUrl } from "@/lib/utils";
 import { Discord } from "@/models/discord-model";
 import { Notion } from "@/models/notion-model";
 import { Slack } from "@/models/slack-model";
@@ -23,7 +24,7 @@ type SaveActionProps = {
 const getDriveInfo = async () => {
   const user = await currentUser();
 
-  if(user){
+  if (user) {
     const clerkResponse = await axios.get(
       `https://api.clerk.com/v1/users/${user.id}/oauth_access_tokens/oauth_google`,
       {
@@ -39,7 +40,7 @@ const getDriveInfo = async () => {
   }
 
   return false;
-}
+};
 
 export const getTrigger = async (
   workflowId: string,
@@ -106,9 +107,10 @@ export const onSaveTrigger = async (
   trigger: string,
   nodeType: ConnectionTypes
 ) => {
+  const user = await currentUser();
+
   try {
     ConnectToDB();
-    const user = await currentUser();
     const dbUser = await User.findOne<UserType>({
       userId: user?.id,
     });
@@ -127,11 +129,23 @@ export const onSaveTrigger = async (
         );
       }
 
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: true,
+        action: "Trigger Save",
+        message: `${nodeType} Trigger saved successfully!`,
+      });
+
       return JSON.stringify({
         success: true,
         data: "trigger saved successfully!",
       });
     }
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Trigger Save",
+      message: "Trigger not saved due to internal errors",
+    });
 
     return JSON.stringify({
       success: false,
@@ -139,6 +153,11 @@ export const onSaveTrigger = async (
     });
   } catch (error: any) {
     console.log(error?.message);
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Trigger Save",
+      message: "Trigger not saved due to internal errors",
+    });
     return JSON.stringify({ success: false, error: error?.message });
   }
 };
@@ -152,11 +171,12 @@ export const onSaveAction = async ({
   user,
   workflowId,
 }: SaveActionProps) => {
+  const _user = await currentUser();
+
   try {
     ConnectToDB();
-    const loggedUser = await currentUser();
     const dbUser = await User.findOne<UserType>({
-      userId: loggedUser?.id,
+      userId: _user?.id,
     });
 
     if (dbUser && workflowId && nodeId) {
@@ -181,11 +201,23 @@ export const onSaveAction = async ({
         }
       );
 
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${_user?.id}`, {
+        status: true,
+        action: "Action Save",
+        message: `${nodeType} Action saved successfully!`,
+      });
+
       return JSON.stringify({
         success: true,
         message: "action saved successfully!",
       });
     }
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${_user?.id}`, {
+      status: false,
+      action: "Action Save",
+      message: "Action not saved due to internal errors",
+    });
 
     return JSON.stringify({
       success: false,
@@ -212,11 +244,12 @@ export const onSaveNotionAction = async ({
   properties: any;
   workflowId: string;
 }) => {
+  const user = await currentUser();
+
   try {
     ConnectToDB();
-    const loggedUser = await currentUser();
     const dbUser = await User.findOne<UserType>({
-      userId: loggedUser?.id,
+      userId: user?.id,
     });
 
     if (nodeId && workflowId && trigger) {
@@ -232,11 +265,23 @@ export const onSaveNotionAction = async ({
         }
       );
 
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: true,
+        action: "Action Save",
+        message: `Notion Action saved successfully!`,
+      });
+
       return JSON.stringify({
         success: true,
         data: "action saved successfully!",
       });
     } else {
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: false,
+        action: "Action Save",
+        message: "Action not saved due to internal errors",
+      });
+
       return JSON.stringify({
         success: false,
         message: "parameters are missing",
@@ -263,6 +308,8 @@ export const addConnection = async ({
   workflowId: string;
   type: "add" | "remove";
 }) => {
+  const user = await currentUser();
+
   try {
     if (sourceId && targetId && sourceNodeType && targetNodeType) {
       if (sourceNodeType !== "AI" && sourceNodeType !== "None") {
@@ -289,6 +336,14 @@ export const addConnection = async ({
         );
 
         if (!target) {
+          await axios.patch(
+            `${absolutePathUrl()}/api/logs?userId=${user?.id}`,
+            {
+              status: false,
+              action: "Edge Connection",
+              message: `Node Id: ${targetId}, ${targetNodeType} account is not connected`,
+            }
+          );
           throw new Error(
             `please connect to your ${targetNodeType} account to continue...`
           );
@@ -298,6 +353,15 @@ export const addConnection = async ({
         if (sourceNodeType === "Google Drive") {
           const isGoogleDriveConnected = await getDriveInfo();
           if (!isGoogleDriveConnected) {
+            await axios.patch(
+              `${absolutePathUrl()}/api/logs?userId=${user?.id}`,
+              {
+                status: false,
+                action: "Edge Connection",
+                message: `Node Id: ${sourceId}, Google Drive account is not connected`,
+              }
+            );
+
             throw new Error(
               `please connect to your Google Drive account. Give access to Google Drive while login.`
             );
@@ -326,6 +390,14 @@ export const addConnection = async ({
           );
 
           if (!source) {
+            await axios.patch(
+              `${absolutePathUrl()}/api/logs?userId=${user?.id}`,
+              {
+                status: false,
+                action: "Edge Connection",
+                message: `Node Id: ${sourceId}, ${sourceNodeType} account is not connected`,
+              }
+            );
             throw new Error(
               `please connect to your ${sourceNodeType} account to continue...`
             );

@@ -1,4 +1,5 @@
 import type { Config } from "tailwindcss";
+import defaultTheme from "tailwindcss/defaultTheme";
 
 // import defaultTheme from "tailwindcss/defaultTheme";
 // import colors from "tailwindcss/colors";
@@ -20,6 +21,11 @@ const config = {
       screens: {
         "2xl": "1400px",
       },
+    },
+    screens: {
+      ...defaultTheme.screens,
+      md2: "896px",
+      ...defaultTheme.screens,
     },
     extend: {
       colors: {

@@ -1,7 +1,8 @@
 "use server";
 
 import ConnectToDB from "@/lib/connectToDB";
-import { ConnectionTypes, CustomNodeTypes, Option } from "@/lib/types";
+import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
+import { absolutePathUrl } from "@/lib/utils";
 import { Discord, DiscordType } from "@/models/discord-model";
 import { Notion, NotionType } from "@/models/notion-model";
 import { Slack, SlackType } from "@/models/slack-model";
@@ -46,6 +47,12 @@ export const createWorkflow = async ({
       },
     });
 
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: true,
+      action: "Workflow create",
+      message: `Workflow Id: ${workflow?._id}, Workflow created successfully!`,
+    });
+
     revalidatePath("/workflows");
 
     return {
@@ -55,6 +62,12 @@ export const createWorkflow = async ({
     };
   } catch (error: any) {
     console.log(error?.message);
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Workflow create",
+      message: `Failed to create the ${name} workflow.`,
+    });
+
     return { success: false, message: "Failed to create workflow." };
   }
 };
@@ -75,7 +88,7 @@ export const onWorkflowSave = async ({
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
 
-    await Workflow.findOneAndUpdate(
+    const workflow = await Workflow.findOneAndUpdate(
       { _id: workflowId, userId: dbUser?._id },
       {
         $set: {
@@ -86,10 +99,22 @@ export const onWorkflowSave = async ({
       }
     );
 
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: true,
+      action: "Workflow save",
+      message: `Workflow Id: ${workflowId}, Workflow updated successfully!`,
+    });
+
     return "Workflow updated successfully!";
   } catch (error: any) {
     console.log(error?.message);
-    return "Failed to updated the workflow.";
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Workflow save",
+      message: `"Failed to update the workflow with Id: ${workflowId}`,
+    });
+
+    return "Failed to update the workflow.";
   }
 };
 
@@ -131,8 +156,8 @@ export const onPublishWorkflow = async ({
   workflowId: string;
   publish: boolean;
 }) => {
+  const user = await currentUser();
   try {
-    const user = await currentUser();
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
 
@@ -228,6 +253,14 @@ export const onPublishWorkflow = async ({
         }
       );
 
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: true,
+        action: "Workflow publish",
+        message: publish
+          ? `Workflow Id: ${workflowId}, ${workflow?.name} Workflow published successfully!`
+          : `Workflow Id: ${workflowId}, ${workflow?.name} Workflow unpublished successfully!`,
+      });
+
       revalidatePath(`/workflows/editor/${workflowId}`);
     }
 
@@ -239,6 +272,12 @@ export const onPublishWorkflow = async ({
     });
   } catch (error: any) {
     console.log(error?.message);
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Workflow publish",
+      message: `Failed to publish the workflow with Id: ${workflowId}`,
+    });
+
     return JSON.stringify({
       success: false,
       message: "Failed to publish the workflow.",
@@ -428,10 +467,10 @@ export const deleteNode = async (
   nodeId: string,
   nodeType: CustomNodeTypes
 ) => {
+  const user = await currentUser();
   try {
     if (workflowId && nodeId && nodeType) {
       ConnectToDB();
-      const user = await currentUser();
       const dbUser = await User.findOne({ userId: user?.id });
 
       if (nodeType === "Google Drive") {
@@ -481,13 +520,25 @@ export const deleteNode = async (
             },
           });
         }
-
-        return JSON.stringify({
-          success: true,
-          data: `${nodeType} node deleted successfully!`,
-        });
       }
+
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: true,
+        action: "Workflow node delete",
+        message: `Workflow Id: ${workflowId}, ${nodeType} node deleted successfully!`,
+      });
+
+      return JSON.stringify({
+        success: true,
+        data: `${nodeType} node deleted successfully!`,
+      });
     }
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Workflow node delete",
+      message: `Workflow Id: ${workflowId}, ${nodeType} node not able to delete due to internal errors`,
+    });
 
     return JSON.stringify({
       success: false,
@@ -495,6 +546,12 @@ export const deleteNode = async (
     });
   } catch (error: any) {
     console.log(error?.message);
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Workflow node delete",
+      message: `Workflow Id: ${workflowId}, ${nodeType} node not able to delete due to internal errors`,
+    });
     return JSON.stringify({ success: false, error: error?.message });
   }
 };
@@ -525,6 +582,7 @@ export const changeTrigger = async (
   nodeId: string,
   nodeType: ConnectionTypes | "None"
 ) => {
+  const user = await currentUser();
   try {
     ConnectToDB();
     if (nodeType === "Google Drive" || nodeType === "None") {
@@ -565,6 +623,12 @@ export const changeTrigger = async (
       }
     }
 
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: true,
+      action: "Workflow Trigger change",
+      message: `Workflow Id: ${workflowId}, trigger changed to ${nodeType} successfully!`,
+    });
+
     return JSON.stringify({ type: "None", id: "" });
   } catch (error: any) {
     console.log(error?.message);
@@ -586,5 +650,46 @@ export const getWorkflows = async () => {
   } catch (error: any) {
     console.log(error?.message);
     return JSON.stringify({ success: false, error: error?.message });
+  }
+};
+
+export const deleteWorkflow = async (workflowId: string) => {
+  const user = await currentUser();
+  try {
+    const workflow = await Workflow.findById(workflowId);
+    if (!workflow) {
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: false,
+        action: "Workflow delete",
+        message: `Workflow Id: ${workflowId}, Workflow not found.`,
+      });
+      return JSON.stringify({ success: false, error: "Workflow not found." });
+    }
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: true,
+      action: "Workflow delete",
+      message: `Workflow Id: ${workflowId}, Workflow deleted successfully!`,
+    });
+
+    await User.findByIdAndUpdate(workflow.userId, {
+      $pull: {
+        workflowId: workflow._id,
+      },
+    });
+    await Workflow.findByIdAndDelete(workflowId);
+
+    return JSON.stringify({
+      success: true,
+      message: "Workflow deleted successfully!",
+    });
+  } catch (error: any) {
+    console.log(error?.message);
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: false,
+      action: "Workflow delete",
+      message: `Workflow Id: ${workflowId}, not able to delete due to some internal errors.`,
+    });
+    return JSON.stringify({ success: false, error: "Interval server error" });
   }
 };

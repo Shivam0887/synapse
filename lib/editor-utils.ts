@@ -1,5 +1,5 @@
 import React from "react";
-import { ConnectionTypes, CustomNodeTypes, NodeType, Option } from "./types";
+import { ConnectionTypes, CustomNodeTypes } from "./types";
 import { ConnectionProviderProps } from "@/providers/connections-provider";
 import { getDiscordMetaData } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 import { getNotionMetaData } from "@/app/(main)/(routes)/connections/_actions/notion-action";
@@ -83,16 +83,6 @@ export const onConnections = async (
     }
   }
 };
-
-// export const fetchBotSlackChannels = async (
-//   token: string,
-//   setSlackChannels: React.Dispatch<React.SetStateAction<Option[]>>
-// ) => {
-//   const channels = await listBotChannels(token);
-//   if (channels) {
-//     setSlackChannels(channels);
-//   }
-// };
 
 export const getPropertyItem = (type: { [x: string]: string }) => {
   if (type["title"]) {

@@ -5,6 +5,8 @@ import ConnectToDB from "@/lib/connectToDB";
 import { User, UserType } from "@/models/user-model";
 import { currentUser } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
+import { absolutePathUrl } from "@/lib/utils";
+import axios from "axios";
 
 const SettingsPage = async () => {
   const user = await currentUser();
@@ -18,6 +20,12 @@ const SettingsPage = async () => {
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { localImageUrl: "" } });
 
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: true,
+      action: "User Info",
+      message: `Profile photo removed successfully!`,
+    });
+
     revalidatePath("/settings");
   };
 
@@ -25,6 +33,12 @@ const SettingsPage = async () => {
     "use server";
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { name } });
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+      status: true,
+      action: "User Info",
+      message: `Username changed successfully!`,
+    });
   };
 
   return (

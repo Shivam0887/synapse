@@ -33,7 +33,22 @@ export const POST = async (req: NextRequest) => {
 
     const result = await chat.sendMessage(prompt);
     let response = result.response.text();
-    if (response?.[0] === "`") response = response.slice(3, -3);
+
+    let i = 0;
+    while (i < response.length) {
+      if (response[i] === "{") break;
+      i++;
+    }
+
+    response = response.slice(i);
+
+    i = response.length - 1;
+    while (i >= 0) {
+      if (response[i] === "}") break;
+      i--;
+    }
+
+    response = response.slice(0, i + 1);
 
     return NextResponse.json({ data: response });
   } catch (error: any) {

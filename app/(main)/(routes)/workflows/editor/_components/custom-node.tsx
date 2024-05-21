@@ -1,12 +1,7 @@
-import {
-  ConnectionTypes,
-  CustomNodeDataType,
-  CustomNodeType,
-  CustomNodeTypes,
-} from "@/lib/types";
+import { CustomNodeDataType, CustomNodeTypes } from "@/lib/types";
 import { useEditor } from "@/providers/editor-provider";
-import { memo, useEffect, useMemo } from "react";
-import { Position, useNodeId } from "reactflow";
+import { memo, useMemo } from "react";
+import { Position, useNodeId, useReactFlow } from "reactflow";
 import CustomNodeIcon from "./custom-node-icon";
 import CustomHandle from "./custom-handle";
 import {
@@ -42,6 +37,8 @@ const formSchema = z.object({
 type FormType = z.infer<typeof formSchema>;
 
 const CustomNode = ({ data, selected }: CustomNodeProps) => {
+  const reactFlow = useReactFlow();
+
   const { dispatch, state } = useEditor();
   const { id } = state.editor.selectedNode;
   const nodeId = useNodeId();
@@ -84,22 +81,19 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
             const sourceIndex = edge.source.charCodeAt(6) - 48;
             const targetIndex = edge.target.charCodeAt(6) - 48;
 
-            console.log({
-              source: nodes[sourceIndex],
-              target: nodes[targetIndex],
-            });
-
             return {
-              ...edge,
+              source: nodes[sourceIndex].id,
+              target: nodes[targetIndex].id,
               id: uuid(),
             };
           });
 
-          console.log(nodes, edges);
+          reactFlow.setNodes(nodes);
+          reactFlow.setEdges(edges);
         }
       }
     } catch (error: any) {
-      console.log(error);
+      console.log(error?.message);
       toast.error(error?.message);
     }
   };
@@ -149,7 +143,7 @@ const CustomNode = ({ data, selected }: CustomNodeProps) => {
           {data.type === "AI" && (
             <div className="space-y-5">
               <p className="text-sm">
-                <span className="p-2 rounded-md bg-red-600">Warning</span>{" "}
+                <span className="p-2 text-red-500">Warning:</span>
                 Already created workflow will be erased.
               </p>
               <Form {...form}>

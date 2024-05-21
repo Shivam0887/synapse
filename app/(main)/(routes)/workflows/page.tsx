@@ -8,7 +8,7 @@ const WorkflowPage = () => {
         Workflows
         <WorkflowButton />
       </h1>
-      <Workflows />
+      <Workflows isDashboard={false} />
     </div>
   );
 };

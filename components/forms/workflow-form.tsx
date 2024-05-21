@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { WorkflowFormSchema } from "@/lib/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
@@ -26,6 +25,11 @@ import { Loader2 } from "lucide-react";
 import { createWorkflow } from "@/app/(main)/(routes)/workflows/_actions/workflow-action";
 import { toast } from "sonner";
 import { useModal } from "@/providers/modal-provider";
+
+const WorkflowFormSchema = z.object({
+  name: z.string().min(1, "Required"),
+  description: z.string().min(1, "Required"),
+});
 
 type WorkflowFormProps = {
   title?: string;

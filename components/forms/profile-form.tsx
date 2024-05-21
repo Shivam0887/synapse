@@ -4,7 +4,6 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 
-import { ProfileSchema } from "@/lib/types";
 import {
   Form,
   FormControl,
@@ -17,6 +16,11 @@ import { Button } from "../ui/button";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useStore } from "@/providers/store-provider";
+
+const ProfileSchema = z.object({
+  email: z.string().email().optional(),
+  name: z.string().min(1, "Required"),
+});
 
 type ProfileFormProps = {
   updateUserInfo: (val: string) => Promise<void>;

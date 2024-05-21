@@ -3,12 +3,9 @@ import Home from "@/components/icons/home";
 import Payment from "@/components/icons/payment";
 import Settings from "@/components/icons/settings";
 import Workflows from "@/components/icons/workflows";
-import {
-  Connection,
-  ConnectionTypes,
-  CustomNodeTypes,
-  PropertyTypes,
-} from "./types";
+import { Connection, ConnectionTypes, PropertyTypes } from "./types";
+
+export const LIMIT = 9;
 
 export const menuOptions = [
   { name: "Dashboard", Component: Home, href: "/dashboard" },

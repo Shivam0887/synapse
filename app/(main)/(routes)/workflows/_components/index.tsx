@@ -7,20 +7,24 @@ import {
   WorkflowType,
 } from "@/models/workflow-model";
 import { Ghost } from "lucide-react";
+import { cn } from "@/lib/utils";
 
-const Workflows = async () => {
+const Workflows = async ({ isDashboard }: { isDashboard: boolean }) => {
   const user = await currentUser();
   ConnectToDB();
   const dbUser = await User.findOne({ userId: user?.id }, { _id: 1 });
-  const workflows = await WorkflowModel.find<WorkflowType>({
+  const result = await WorkflowModel.find<WorkflowType>({
     userId: dbUser?._id,
   }).sort({ createdAt: "desc" });
 
+  const workflows = isDashboard ? result.slice(0, 3) : result;
   return (
     <>
       {workflows.length ? (
         <div className="relative flex flex-col gap-4">
-          <section className="flex flex-col gap-4 p-6">
+          <section
+            className={cn("flex flex-col gap-4 p-6", { "pl-0": isDashboard })}
+          >
             {workflows.map((workflow) => (
               <Workflow
                 key={workflow._id.toString()}
@@ -28,6 +32,7 @@ const Workflows = async () => {
                 id={workflow._id.toString()}
                 name={workflow.name}
                 publish={workflow.publish}
+                isDashboard={isDashboard}
               />
             ))}
           </section>

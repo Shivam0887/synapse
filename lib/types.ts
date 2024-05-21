@@ -3,21 +3,7 @@ import { ConnectionProviderProps } from "@/providers/connections-provider";
 import { Node } from "reactflow";
 import { z } from "zod";
 
-export const ProfileSchema = z.object({
-  email: z.string().email().optional(),
-  name: z.string().min(1, "Required"),
-});
-
-export const WorkflowFormSchema = z.object({
-  name: z.string().min(1, "Required"),
-  description: z.string().min(1, "Required"),
-});
-
 export type ConnectionTypes = "Google Drive" | "Notion" | "Slack" | "Discord";
-export type NodeType = Extract<
-  keyof ConnectionProviderProps,
-  "googleNode" | "discordNode" | "slackNode" | "notionNode"
->;
 
 export type Connection = {
   title: ConnectionTypes;
@@ -83,16 +69,6 @@ export const nodeMapper: Record<
   Slack: "slackId",
   Discord: "discordId",
   "Google Drive": "googleDriveWatchTrigger",
-};
-
-export type Option = {
-  value: string;
-  label: string;
-  disable?: boolean;
-  /** fixed option that can't be removed. */
-  fixed?: boolean;
-  /** Group the options by providing key. */
-  [key: string]: string | boolean | undefined;
 };
 
 export type TriggerProps = {

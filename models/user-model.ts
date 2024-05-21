@@ -124,6 +124,27 @@ export const UserSchema = new Schema(
       },
       default: () => {},
     },
+    logs: [
+      {
+        status: {
+          type: Boolean,
+          enum: [true, false],
+          required: true,
+        },
+        action: {
+          type: String,
+          required: true,
+        },
+        message: {
+          type: String,
+          required: true,
+        },
+        createdAt: {
+          type: Date,
+          required: true,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );

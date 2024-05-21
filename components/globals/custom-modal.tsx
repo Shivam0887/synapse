@@ -31,7 +31,7 @@ const CustomModal = ({
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle className="text-center">{title}</DrawerTitle>
-          <DrawerDescription className="text-center flex flex-col items-center gap-4 h-96 overflow-scroll">
+          <DrawerDescription className="text-center flex flex-col items-center gap-4 h-72 overflow-scroll">
             {subHeading}
             {children}
           </DrawerDescription>
