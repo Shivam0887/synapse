@@ -1,49 +1,46 @@
-import React from "react";
 import Stripe from "stripe";
-import { currentUser } from "@clerk/nextjs/server";
-import { db } from "@/lib/db";
 import BillingDashboard from "./_components/billing-dashboard";
+import { PLANS } from "@/lib/constant";
+import { getUser } from "../connections/_actions/get-user";
+import { getUserSubscriptionPlan } from "@/lib/utils";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET!, {
+  typescript: true,
+  apiVersion: "2024-04-10",
+});
 
 type Props = {
-  searchParams?: { [key: string]: string | undefined };
+  searchParams: { [key: string]: "Pro" | "Premium" | undefined };
 };
 
 const Billing = async (props: Props) => {
-  const { session_id } = props.searchParams ?? {
-    session_id: "",
-  };
-  if (session_id) {
-    const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-      typescript: true,
-      apiVersion: "2023-10-16",
-    });
+  const plan = props.searchParams.plan ?? "";
+  let productId = plan === "Premium" || plan === "Pro" ? PLANS[plan] : "";
 
-    const session = await stripe.checkout.sessions.listLineItems(session_id);
-    const user = await currentUser();
-    if (user) {
-      await db.user.update({
-        where: {
-          clerkId: user.id,
-        },
-        data: {
-          tier: session.data[0].description,
-          credits:
-            session.data[0].description == "Unlimited"
-              ? "Unlimited"
-              : session.data[0].description == "Pro"
-              ? "100"
-              : "10",
-        },
-      });
+  const { isCanceled, isSubscribed, stripeCurrentPeriodEnd } =
+    await getUserSubscriptionPlan();
+
+  const user = await getUser();
+  if (user && !productId) {
+    const priceId = JSON.parse(user).stripePriceId;
+    if (priceId) {
+      const product_id = (await stripe.prices.retrieve(priceId))
+        .product as string;
+      productId = product_id;
     }
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="sticky top-0 z-[10] flex items-center justify-between border-b bg-background/50 p-6 text-4xl backdrop-blur-lg">
-        <span>Billing</span>
+      <h1 className="sticky top-0 z-[10] pl-10 flex items-center justify-between border-b bg-background/50 p-6 text-4xl backdrop-blur-lg">
+        Billing
       </h1>
-      <BillingDashboard />
+      <BillingDashboard
+        productId={productId}
+        isCanceled={isCanceled}
+        isSubscribed={isSubscribed}
+        stripeCurrentPeriodEnd={stripeCurrentPeriodEnd}
+      />
     </div>
   );
 };

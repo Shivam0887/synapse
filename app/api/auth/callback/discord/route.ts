@@ -6,6 +6,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { Discord } from "@/models/discord-model";
 import { Workflow } from "@/models/workflow-model";
 import { User, UserType } from "@/models/user-model";
+import { absolutePathUrl } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const user = await currentUser();
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
         client_id: process.env.DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
         grant_type: "authorization_code",
-        redirect_uri: "http://localhost:3000/api/auth/callback/discord",
+        redirect_uri: `${absolutePathUrl()}/api/auth/callback/discord`,
       }),
       {
         headers: {
@@ -105,7 +106,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(
-      `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
+      `${absolutePathUrl()}/workflows/editor/${dbUser?.currentWorkflowId}`
     );
   } catch (error: any) {
     console.log(error?.message);

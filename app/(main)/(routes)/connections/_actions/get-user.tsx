@@ -11,7 +11,16 @@ export const getUser = async () => {
 
   const dbUser = await User.findOne<UserType | null>(
     { userId: user.id },
-    { _id: 0, name: 1, imageUrl: 1, email: 1, localImageUrl: 1 }
+    {
+      _id: 0,
+      name: 1,
+      imageUrl: 1,
+      email: 1,
+      localImageUrl: 1,
+      tier: 1,
+      credits: 1,
+      stripePriceId: 1,
+    }
   );
 
   if (!dbUser) return;

@@ -6,10 +6,10 @@ import {
 import { ContainerScroll } from "@/components/globals/container-scroll-animation";
 import { LampContainer } from "@/components/globals/lamp";
 import Navbar from "@/components/globals/navbar";
-import { Button } from "@/components/ui/button";
 import { SignedOut } from "@clerk/nextjs";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, X } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -23,14 +23,14 @@ export default function Home() {
             titleComponent={
               <div className="flex items-center flex-col">
                 <SignedOut>
-                  <Button
-                    size={"lg"}
-                    className="p-8 mb-8 md:mb-0 text-xl md:text-2xl border-t-2 rounded-full border-[#4D4D4D] bg-[#1F1F1F] hover:bg-white group transition-all flex items-center justify-center gap-4 hover:shadow-xl hover:shadow-neutral-500 duration-500"
+                  <Link
+                    href="/dashboard"
+                    className="font-medium p-8 mb-8 md:mb-0 text-xl md:text-2xl border-t-2 rounded-full border-[#4D4D4D] bg-[#1F1F1F] hover:bg-white group transition-all flex items-center justify-center gap-4 hover:shadow-xl hover:shadow-neutral-500 duration-500"
                   >
                     <span className="bg-clip-text text-transparent bg-gradient-to-r from-neutral-500 to-neutral-600 font-sans group-hover:bg-gradient-to-r group-hover:from-neutral-950 group-hover:to-neutral-900">
                       Start For Free Today
                     </span>
-                  </Button>
+                  </Link>
                 </SignedOut>
                 <h1 className="text-5xl md:text-8xl bg-clip-text text-transparent bg-gradient-to-b from-white to-neutral-600 font-sans font-bold">
                   Automate Your Work With Synapse
@@ -39,7 +39,7 @@ export default function Home() {
             }
           >
             <Image
-              src="/temp-banner.png"
+              src="/banner.png"
               alt="banner"
               fill
               quality={100}
@@ -58,13 +58,13 @@ export default function Home() {
 
         <div className="flex items-center justify-center flex-col lg:flex-row gap-8 -mt-60 mb-6">
           <CardContainer className="inter-var ">
-            <CardBody className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-neutral-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-full md:!w-[350px] h-auto rounded-xl p-6 border">
+            <CardBody className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-neutral-500/[0.1] dark:bg-black dark:border-[#E2CBFF] border-black/[0.1] w-full md:!w-[350px] h-auto rounded-xl p-6 border">
               <CardItem
                 translateZ="50"
                 className="text-xl font-bold text-neutral-600 dark:text-white "
               >
-                Hobby
-                <h2 className="text-6xl ">$0</h2>
+                Pro Plan
+                <h2 className="text-5xl ">$19/month</h2>
               </CardItem>
               <CardItem
                 translateZ="60"
@@ -74,34 +74,38 @@ export default function Home() {
                 up {"you'll"} never leave us after this!
                 <ul className="my-4 flex flex-col gap-2">
                   <li className="flex items-center gap-2">
-                    <CheckIcon />3 Free automations
+                    <CheckIcon />
+                    100 credits
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    100 tasks per month
+                    Perform 100 automation tasks.
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    Two-step Actions
+                    Publish 50 workflows.
+                  </li>
+                  <li className="flex items-center gap-2 text-neutral-500">
+                    <X />
+                    Automatically save workflows to prevent data loss.
+                  </li>
+                  <li className="flex items-center gap-2 text-neutral-500">
+                    <X />
+                    Use AI to create and optimize workflows.
                   </li>
                 </ul>
               </CardItem>
-              <div className="flex justify-between items-center mt-8">
+              <Link
+                href="/billing?plan=Pro"
+                className="flex justify-between items-center mt-8"
+              >
                 <CardItem
                   translateZ={20}
-                  as="button"
                   className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
                 >
                   Try now →
                 </CardItem>
-                <CardItem
-                  translateZ={20}
-                  as="button"
-                  className="px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs font-bold"
-                >
-                  Get Started Now
-                </CardItem>
-              </div>
+              </Link>
             </CardBody>
           </CardContainer>
           <CardContainer className="inter-var ">
@@ -110,92 +114,50 @@ export default function Home() {
                 translateZ="50"
                 className="text-xl font-bold text-neutral-600 dark:text-white "
               >
-                Pro Plan
-                <h2 className="text-6xl ">$29</h2>
+                Premium Plan
+                <h2 className="text-5xl ">$49/month</h2>
               </CardItem>
               <CardItem
                 translateZ="60"
                 className="text-neutral-500 text-sm max-w-sm mt-2 dark:text-neutral-300"
               >
-                Get a glimpse of what our software is capable of. Just a heads
-                up {"you'll"} never leave us after this!
+                Upgrade to the Premium Plan & unlock the full potential of
+                automation with advanced features.
                 <ul className="my-4 flex flex-col gap-2">
                   <li className="flex items-center gap-2">
-                    <CheckIcon />3 Free automations
+                    <CheckIcon />
+                    Unlimited credits
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    100 tasks per month
+                    Perform unlimited automation tasks.
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    Two-step Actions
+                    Publish unlimited workflows.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon />
+                    Automatically save workflows to prevent data loss.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon />
+                    Use AI to create and optimize workflows.
                   </li>
                 </ul>
               </CardItem>
-              <div className="flex justify-between items-center mt-8">
+              <Link
+                href="/billing?plan=Premium"
+                className="flex justify-between items-center mt-8"
+              >
                 <CardItem
                   translateZ={20}
                   as="button"
-                  className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
+                  className="px-4 py-2 rounded-xl text-xs cursor-pointer font-normal dark:text-white"
                 >
                   Try now →
                 </CardItem>
-                <CardItem
-                  translateZ={20}
-                  as="button"
-                  className="px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs font-bold"
-                >
-                  Get Started Now
-                </CardItem>
-              </div>
-            </CardBody>
-          </CardContainer>
-          <CardContainer className="inter-var ">
-            <CardBody className="bg-gray-50 relative group/card  dark:hover:shadow-2xl dark:hover:shadow-neutral-500/[0.1] dark:bg-black dark:border-white/[0.2] border-black/[0.1] w-full md:!w-[350px] h-auto rounded-xl p-6 border">
-              <CardItem
-                translateZ="50"
-                className="text-xl font-bold text-neutral-600 dark:text-white "
-              >
-                Unlimited
-                <h2 className="text-6xl ">$99</h2>
-              </CardItem>
-              <CardItem
-                translateZ="60"
-                className="text-neutral-500 text-sm max-w-sm mt-2 dark:text-neutral-300"
-              >
-                Get a glimpse of what our software is capable of. Just a heads
-                up {"you'll"} never leave us after this!
-                <ul className="my-4 flex flex-col gap-2">
-                  <li className="flex items-center gap-2">
-                    <CheckIcon />3 Free automations
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckIcon />
-                    100 tasks per month
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckIcon />
-                    Two-step Actions
-                  </li>
-                </ul>
-              </CardItem>
-              <div className="flex justify-between items-center mt-8">
-                <CardItem
-                  translateZ={20}
-                  as="button"
-                  className="px-4 py-2 rounded-xl text-xs font-normal dark:text-white"
-                >
-                  Try now →
-                </CardItem>
-                <CardItem
-                  translateZ={20}
-                  as="button"
-                  className="px-4 py-2 rounded-xl bg-black dark:bg-white dark:text-black text-white text-xs font-bold"
-                >
-                  Get Started Now
-                </CardItem>
-              </div>
+              </Link>
             </CardBody>
           </CardContainer>
         </div>

@@ -11,9 +11,9 @@ type BillingProviderProps = {
 
 const initialValues: BillingProviderProps = {
   credits: "",
-  setCredits: () => undefined,
+  setCredits: () => {},
   tier: "",
-  setTier: () => undefined,
+  setTier: () => {},
 };
 
 type WithChildProps = {
@@ -39,5 +39,6 @@ export const BillingProvider = ({ children }: WithChildProps) => {
 
 export const useBilling = () => {
   const state = React.useContext(context);
+  if (!state) throw new Error("useBilling can be used within Billing Provider");
   return state;
 };

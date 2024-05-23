@@ -15,12 +15,16 @@ export const UserSchema = new Schema(
     localImageUrl: String,
     tier: {
       type: String,
-      default: () => "Free",
+      default: () => "Free Plan",
     },
     credits: {
       type: String,
       default: () => "10",
     },
+    stripeCustomerId: String,
+    stripeSubscriptionId: String,
+    stripePriceId: String,
+    stripeCurrentPeriodEnd: Date,
     workflowId: [
       {
         type: Schema.Types.ObjectId,

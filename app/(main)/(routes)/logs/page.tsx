@@ -18,7 +18,6 @@ const LogPage = () => {
 
   useEffect(() => {
     (async () => {
-      console.log("useEffect");
       setIsLoading(true);
       const response = await getLogs(pageNum);
       if (response) {

@@ -237,7 +237,7 @@ export const onPublishWorkflow = async ({
           message: `please set the action for Notion node with id ${notionInstance.nodeId}`,
         });
 
-      await axios.post("http://localhost:3000/api/automate", {
+      await axios.post(`${absolutePathUrl()}/api/automate`, {
         publish,
         workflowId,
         _id: dbUser?._id.toString(),
@@ -257,8 +257,8 @@ export const onPublishWorkflow = async ({
         status: true,
         action: "Workflow publish",
         message: publish
-          ? `Workflow Id: ${workflowId}, ${workflow?.name} Workflow published successfully!`
-          : `Workflow Id: ${workflowId}, ${workflow?.name} Workflow unpublished successfully!`,
+          ? `Workflow Id: ${workflowId}, Workflow published successfully!`
+          : `Workflow Id: ${workflowId}, Workflow unpublished successfully!`,
       });
 
       revalidatePath(`/workflows/editor/${workflowId}`);

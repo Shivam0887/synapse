@@ -4,6 +4,7 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Workflow } from "@/models/workflow-model";
 import { Slack } from "@/models/slack-model";
+import { absolutePathUrl } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
   const user = await currentUser();
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`http://localhost:3000/workflows`);
+    return NextResponse.redirect(`${absolutePathUrl()}/workflows`);
   }
 
   if (!code) {
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
 
     // Handle the successful OAuth flow and redirect the user
     return NextResponse.redirect(
-      `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
+      `${absolutePathUrl()}/workflows/editor/${dbUser?.currentWorkflowId}`
     );
   } catch (error: any) {
     console.error(error?.message);

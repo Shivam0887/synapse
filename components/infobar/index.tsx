@@ -14,26 +14,17 @@ import { Dialog, DialogContent, DialogTrigger } from "../ui/dialog";
 import { getWorkflows } from "@/app/(main)/(routes)/workflows/_actions/workflow-action";
 import Link from "next/link";
 
-// import { useBilling } from '@/providers/billing-provider'
-// import { onPaymentDetails } from '@/app/(main)/(pages)/billing/_actions/payment-connecetions'
+import { useBilling } from "@/providers/billing-provider";
+import { getUser } from "@/app/(main)/(routes)/connections/_actions/get-user";
 
 const InfoBar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [workflows, setWorkflows] = useState<
     { _id: string; name: string; description: string }[]
   >([]);
-  //   const { credits, tier, setCredits, setTier } = useBilling()
-
-  //   const onGetPayment = async () => {
-  //     const response = await onPaymentDetails()
-  //     if (response) {
-  //       setTier(response.tier!)
-  //       setCredits(response.credits!)
-  //     }
-  //   }
+  const { credits, tier, setCredits, setTier } = useBilling();
 
   useEffect(() => {
-    // onGetPayment()
     (async () => {
       const response = await getWorkflows();
       const data = JSON.parse(response);
@@ -51,18 +42,29 @@ const InfoBar = () => {
     return () => document.removeEventListener("keydown", handleKeyDown, false);
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      const user = await getUser();
+      if (user) {
+        const details = JSON.parse(user);
+        setCredits(details.credits);
+        setTier(details.tier);
+      }
+    })();
+  }, [setCredits, setTier]);
+
   return (
     <div className="flex flex-row justify-end gap-6 items-center px-4 py-4 w-full dark:bg-black ">
-      {/* <span className="flex items-center gap-2 font-bold">
+      <span className="flex items-center gap-2 font-bold">
         <p className="text-sm font-light text-gray-300">Credits</p>
-        {tier == 'Unlimited' ? (
+        {tier === "Premium Plan" ? (
           <span>Unlimited</span>
         ) : (
           <span>
-            {credits}/{tier == 'Free' ? '10' : tier == 'Pro' && '100'}
+            {credits}/{tier === "Free Plan" ? "10" : "100"}
           </span>
         )}
-      </span> */}
+      </span>
       <div className="flex w-40 gap-2 items-center rounded-3xl bg-muted p-2">
         <Search className="h-5 w-5" />
         <Dialog open={isOpen} onOpenChange={setIsOpen}>

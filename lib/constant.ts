@@ -7,6 +7,11 @@ import { Connection, ConnectionTypes, PropertyTypes } from "./types";
 
 export const LIMIT = 9;
 
+export const PLANS = {
+  Pro: "prod_Q9pmGaFs8Ch0NB",
+  Premium: "prod_Q9plBuT2fuWmsU",
+};
+
 export const menuOptions = [
   { name: "Dashboard", Component: Home, href: "/dashboard" },
   { name: "Workflows", Component: Workflows, href: "/workflows" },

@@ -22,6 +22,25 @@ import {
 import { Client, GatewayIntentBits } from "discord.js";
 import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
+
+import fs from "fs/promises";
+import path from "path";
+import { absolutePathUrl } from "@/lib/utils";
+
+const dirPath = path.join(__dirname, "_data");
+const filePath = path.join(dirPath, "data.txt");
+
+async function saveData(data: string) {
+  // Ensure the subfolder exists
+  await fs.mkdir(dirPath, { recursive: true });
+  await fs.writeFile(filePath, data);
+}
+
+async function getData() {
+  const data = await fs.readFile(filePath, "utf8");
+  return data;
+}
+
 // Create a new client instance
 const DiscordClient = new Client({
   intents: [
@@ -52,7 +71,7 @@ type ConnectionType = {
     message: string;
     trigger: string | null;
     user?: string | null;
-  } | null,
+  } | null;
   connections: {
     discordId: Pick<DiscordType, "_id" | "webhookUrl" | "action">[];
     slackId: Pick<SlackType, "_id" | "webhookUrl" | "action" | "accessToken">[];
@@ -73,9 +92,6 @@ const result: ResultType = {
     result: [],
   },
 };
-
-// Currently logged-in user-id
-let UserId = "";
 
 const onMessageSend = async ({
   nodeType,
@@ -121,7 +137,8 @@ async function dfs(
 ) {
   if (triggerType === "Notion" || triggerType === "None") return;
   if (nodeType === "Discord" || nodeType === "Slack" || nodeType === "Notion") {
-    const Model = nodeType === "Discord" ? Discord : nodeType === "Slack" ? Slack : Notion;
+    const Model =
+      nodeType === "Discord" ? Discord : nodeType === "Slack" ? Slack : Notion;
     const collection = await Model.findById<ConnectionType>(_id, {
       _id: 0,
       action: 1,
@@ -146,23 +163,24 @@ async function dfs(
         select: "nodeId workflowId",
         model: Notion,
       });
-    
-    if(isInitial && collection){
-      const { accessToken, nodeId, workflowId, action, webhookUrl } = collection;
-      if(nodeType === "Discord" && action && webhookUrl){
-          result[triggerType]["result"].push({
-            action,
-            webhookUrl,
-            nodeType: "Discord",
-          });
-      } else if(nodeType === "Slack" && action && webhookUrl && accessToken){
+
+    if (isInitial && collection) {
+      const { accessToken, nodeId, workflowId, action, webhookUrl } =
+        collection;
+      if (nodeType === "Discord" && action && webhookUrl) {
+        result[triggerType]["result"].push({
+          action,
+          webhookUrl,
+          nodeType: "Discord",
+        });
+      } else if (nodeType === "Slack" && action && webhookUrl && accessToken) {
         result[triggerType]["result"].push({
           action,
           webhookUrl,
           nodeType: "Slack",
           accessToken,
         });
-      } else if(nodeType === "Notion" && workflowId){
+      } else if (nodeType === "Notion" && workflowId) {
         result[triggerType]["result"].push({
           nodeType: "Notion",
           nodeId,
@@ -171,7 +189,7 @@ async function dfs(
       }
     }
 
-    if (collection) {
+    if (!isInitial && collection) {
       await Promise.all(
         collection.connections.discordId.map(
           async ({ _id, action, webhookUrl }) => {
@@ -255,14 +273,14 @@ export async function GET(req: NextRequest) {
   const isChannel = searchParams.get("isChannel");
   const eventType = searchParams.get("eventType");
   const channelType = searchParams.get("channelType");
-  const id = searchParams.get("userId");
+  const id = searchParams.get("clerkUserId");
 
-  if (id) UserId = id;
+  const userId = await getData();
 
   try {
-    if (eventType && UserId) {
+    if (eventType && userId) {
       ConnectToDB();
-      const dbUser = await User.findById<UserType>(UserId, {
+      const dbUser = await User.findById<UserType>(userId, {
         WorkflowToSlack: 1,
       });
 
@@ -404,31 +422,52 @@ export async function POST(req: NextRequest) {
     });
 
     if (dbUser) {
-      UserId = _id;
+      await saveData(_id);
+
       const WorkflowToDiscord = dbUser.WorkflowToDiscord;
       const WorkflowToSlack = dbUser.WorkflowToSlack;
       const WorkflowToDrive = dbUser.WorkflowToDrive;
 
-      const workflow = await Workflow.findById<Pick<WorkflowType, '_id' | 'parentId' | 'parentTrigger' | 'googleDriveWatchTrigger'>>(workflowId, {
+      const workflow = await Workflow.findById<
+        Pick<
+          WorkflowType,
+          "_id" | "parentId" | "parentTrigger" | "googleDriveWatchTrigger"
+        >
+      >(workflowId, {
         parentTrigger: 1,
         parentId: 1,
-        googleDriveWatchTrigger: 1
+        googleDriveWatchTrigger: 1,
       });
 
       if (workflow?.parentTrigger && publish) {
-        if (workflow.parentTrigger === "Google Drive" && workflow.googleDriveWatchTrigger?.connections) {
-          const { discordId, notionId, slackId } = workflow.googleDriveWatchTrigger.connections
-          await Promise.all(discordId.map(async ({ _id }) => {
-            await dfs(_id.toString(), "Discord", workflow.parentTrigger, true);
-          }));
+        if (
+          workflow.parentTrigger === "Google Drive" &&
+          workflow.googleDriveWatchTrigger?.connections
+        ) {
+          const { discordId, notionId, slackId } =
+            workflow.googleDriveWatchTrigger.connections;
+          await Promise.all(
+            discordId.map(async ({ _id }) => {
+              await dfs(
+                _id.toString(),
+                "Discord",
+                workflow.parentTrigger,
+                true
+              );
+            })
+          );
 
-          await Promise.all(slackId.map(async ({ _id }) => {
-            await dfs(_id.toString(), "Slack", workflow.parentTrigger, true);
-          }));
+          await Promise.all(
+            slackId.map(async ({ _id }) => {
+              await dfs(_id.toString(), "Slack", workflow.parentTrigger, true);
+            })
+          );
 
-          await Promise.all(notionId.map(async ({ _id }) => {
-            await dfs(_id.toString(), "Notion", workflow.parentTrigger, true);
-          }));
+          await Promise.all(
+            notionId.map(async ({ _id }) => {
+              await dfs(_id.toString(), "Notion", workflow.parentTrigger, true);
+            })
+          );
 
           WorkflowToDrive.set(workflowId, {
             result: result["Google Drive"]["result"],
@@ -436,9 +475,13 @@ export async function POST(req: NextRequest) {
           await dbUser.save();
 
           await axios.get(
-            `http://localhost:3000/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
+            `${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
           );
-        } else if (workflow.parentId && (workflow.parentTrigger === "Discord" || workflow.parentTrigger === "Slack")) {
+        } else if (
+          workflow.parentId &&
+          (workflow.parentTrigger === "Discord" ||
+            workflow.parentTrigger === "Slack")
+        ) {
           const Model = workflow.parentTrigger === "Discord" ? Discord : Slack;
           const collection = await Model.findById(workflow.parentId);
 
@@ -448,7 +491,12 @@ export async function POST(req: NextRequest) {
             collection.guildId &&
             collection.trigger
           ) {
-            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false);
+            await dfs(
+              collection._id,
+              workflow.parentTrigger,
+              workflow.parentTrigger,
+              false
+            );
             result["Discord"]["metaData"] = {
               channelId: collection.channelId,
               guildId: collection.guildId,
@@ -468,7 +516,12 @@ export async function POST(req: NextRequest) {
             collection.teamId &&
             collection.trigger
           ) {
-            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false);
+            await dfs(
+              collection._id,
+              workflow.parentTrigger,
+              workflow.parentTrigger,
+              false
+            );
             result["Slack"]["metaData"] = {
               channelId: collection.channelId,
               teamId: collection.teamId,
@@ -485,10 +538,16 @@ export async function POST(req: NextRequest) {
       }
 
       if (workflow?.parentTrigger && !publish) {
-        if (workflow.parentTrigger === "Discord" && WorkflowToDiscord.has(workflowId)) {
+        if (
+          workflow.parentTrigger === "Discord" &&
+          WorkflowToDiscord.has(workflowId)
+        ) {
           WorkflowToDiscord.delete(workflowId);
           await dbUser.save();
-        } else if (workflow.parentTrigger === "Slack" && WorkflowToSlack.has(workflowId)) {
+        } else if (
+          workflow.parentTrigger === "Slack" &&
+          WorkflowToSlack.has(workflowId)
+        ) {
           WorkflowToSlack.delete(workflowId);
           await dbUser.save();
         } else if (workflow?.parentTrigger === "Google Drive") {
@@ -500,7 +559,7 @@ export async function POST(req: NextRequest) {
             },
           });
           await axios.get(
-            `http://localhost:3000/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
+            `${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
           );
         }
       }
@@ -509,14 +568,19 @@ export async function POST(req: NextRequest) {
         if (publish) {
           console.log("published");
           const { trigger } = result["Discord"]["metaData"];
-          if (trigger === "0" || trigger === "1") DiscordClient.on("messageCreate", onMessageCreate);
-          else if (trigger === "2") DiscordClient.on("messageReactionAdd", onMessageReactionAdd);
-          else if (trigger === "3") DiscordClient.on("guildMemberAdd", onGuildMemberAdd);
-        } 
-        else {
+          if (trigger === "0" || trigger === "1")
+            DiscordClient.on("messageCreate", onMessageCreate);
+          else if (trigger === "2")
+            DiscordClient.on("messageReactionAdd", onMessageReactionAdd);
+          else if (trigger === "3")
+            DiscordClient.on("guildMemberAdd", onGuildMemberAdd);
+        } else {
           console.log("Unpublished");
           DiscordClient.removeListener("messageCreate", onMessageCreate);
-          DiscordClient.removeListener("messageReactionAdd", onMessageReactionAdd);
+          DiscordClient.removeListener(
+            "messageReactionAdd",
+            onMessageReactionAdd
+          );
           DiscordClient.removeListener("guildMemberAdd", onGuildMemberAdd);
         }
 

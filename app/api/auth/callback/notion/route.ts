@@ -4,6 +4,7 @@ import { User, UserType } from "@/models/user-model";
 import { currentUser } from "@clerk/nextjs/server";
 import { Notion } from "@/models/notion-model";
 import { Workflow } from "@/models/workflow-model";
+import { absolutePathUrl } from "@/lib/utils";
 
 const clientId = process.env.NOTION_CLIENT_ID!;
 const clientSecret = process.env.NOTION_CLIENT_SECRET!;
@@ -75,7 +76,7 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.redirect(
-          `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
+          `${absolutePathUrl()}/workflows/editor/${dbUser?.currentWorkflowId}`
         );
       }
     } else if (error) {
@@ -85,8 +86,8 @@ export async function GET(req: NextRequest) {
     console.log(error?.message);
     if (dbUser)
       return NextResponse.redirect(
-        `http://localhost:3000/workflows/editor/${dbUser?.currentWorkflowId}`
+        `${absolutePathUrl()}/workflows/editor/${dbUser?.currentWorkflowId}`
       );
-    else return NextResponse.redirect("http://localhost:3000/workflows");
+    else return NextResponse.redirect(`${absolutePathUrl()}/workflows`);
   }
 }
