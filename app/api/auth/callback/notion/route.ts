@@ -11,16 +11,28 @@ const clientSecret = process.env.NOTION_CLIENT_SECRET!;
 const redirectUri = process.env.NOTION_REDIRECT_URI!;
 
 export async function GET(req: NextRequest) {
-  const user = await currentUser();
-  ConnectToDB();
-  const dbUser = await User.findOne<UserType>(
-    { userId: user?.id },
-    { currentWorkflowId: 1 }
-  );
+  const code = req.nextUrl.searchParams.get("code");
+  const error = req.nextUrl.searchParams.get("error");
+  const userId = req.nextUrl.searchParams.get("state");
+
+  if (!userId) {
+    return new NextResponse("user not authenticated", { status: 401 });
+  }
+
+  if (error) {
+    return NextResponse.redirect(`${absolutePathUrl()}/workflows`);
+  }
+
+  if (!code) {
+    return new NextResponse("Code not provided", { status: 400 });
+  }
 
   try {
-    const code = req.nextUrl.searchParams.get("code");
-    const error = req.nextUrl.searchParams.get("error");
+    ConnectToDB();
+    const dbUser = await User.findOne<UserType>(
+      { userId },
+      { currentWorkflowId: 1 }
+    );
 
     if (code && dbUser) {
       const encoded = Buffer.from(`${clientId}:${clientSecret}`).toString(
@@ -84,10 +96,6 @@ export async function GET(req: NextRequest) {
     }
   } catch (error: any) {
     console.log(error?.message);
-    if (dbUser)
-      return NextResponse.redirect(
-        `${absolutePathUrl()}/workflows/editor/${dbUser?.currentWorkflowId}`
-      );
-    else return NextResponse.redirect(`${absolutePathUrl()}/workflows`);
+    return NextResponse.redirect(`${absolutePathUrl()}/workflows`);
   }
 }

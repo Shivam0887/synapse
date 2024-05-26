@@ -59,6 +59,9 @@ dependencies:
   '@slack/bolt':
     specifier: ^3.18.0
     version: 3.18.0(bufferutil@4.0.8)(utf-8-validate@6.0.3)
+  '@slack/socket-mode':
+    specifier: ^2.0.0
+    version: 2.0.0(bufferutil@4.0.8)(utf-8-validate@6.0.3)
   '@slack/web-api':
     specifier: ^7.0.4
     version: 7.0.4
@@ -1845,6 +1848,23 @@ packages:
       - utf-8-validate
     dev: false
 
+  /@slack/socket-mode@2.0.0(bufferutil@4.0.8)(utf-8-validate@6.0.3):
+    resolution: {integrity: sha512-bcTAtJmLof2fu8LIcMVwUGD0XJ93x09tXCiYYUyEBkmmRbe8a1ze62aQkRWXmkM3bFFmNAVkPR55EGwFzQFu8g==}
+    engines: {node: '>= 18', npm: '>= 8.6.0'}
+    dependencies:
+      '@slack/logger': 4.0.0
+      '@slack/web-api': 7.0.4
+      '@types/node': 20.11.30
+      '@types/ws': 8.5.9
+      eventemitter3: 5.0.1
+      finity: 0.5.4
+      ws: 8.14.2(bufferutil@4.0.8)(utf-8-validate@6.0.3)
+    transitivePeerDependencies:
+      - bufferutil
+      - debug
+      - utf-8-validate
+    dev: false
+
   /@slack/types@2.11.0:
     resolution: {integrity: sha512-UlIrDWvuLaDly3QZhCPnwUSI/KYmV1N9LyhuH6EDKCRS1HWZhyTG3Ja46T3D0rYfqdltKYFXbJSSRPwZpwO0cQ==}
     engines: {node: '>= 12.13.0', npm: '>= 6.12.0'}
@@ -2828,8 +2848,8 @@ packages:
       node-releases: 2.0.14
       update-browserslist-db: 1.0.13(browserslist@4.23.0)
 
-  /bson@6.5.0:
-    resolution: {integrity: sha512-DXf1BTAS8vKyR90BO4x5v3rKVarmkdkzwOrnYDFdjAY694ILNDkmA3uRh1xXJEl+C1DAh8XCvAQ+Gh3kzubtpg==}
+  /bson@6.7.0:
+    resolution: {integrity: sha512-w2IquM5mYzYZv6rs3uN2DZTOBe2a0zXLj53TGDqwF4l6Sz/XsISrisXOJihArF9+BZ6Cq/GjVht7Sjfmri7ytQ==}
     engines: {node: '>=16.20.1'}
     dev: false
 
@@ -4865,7 +4885,7 @@ packages:
         optional: true
     dependencies:
       '@mongodb-js/saslprep': 1.1.5
-      bson: 6.5.0
+      bson: 6.7.0
       mongodb-connection-string-url: 3.0.0
     dev: false
 
@@ -4873,7 +4893,7 @@ packages:
     resolution: {integrity: sha512-da/r6zpG+2eAXuhBGUnL6jcBd03zlytoCc5/wq+LyTsmrY9hhPQmSpnugwnfqldtBmUOhB6iMLoV4hNtHRq+ww==}
     engines: {node: '>=16.20.1'}
     dependencies:
-      bson: 6.5.0
+      bson: 6.7.0
       kareem: 2.5.1
       mongodb: 6.3.0
       mpath: 0.9.0

@@ -1,14 +1,13 @@
 import { User, UserType } from "@/models/user-model";
 import ConnectToDB from "@/lib/connectToDB";
-import { auth, currentUser } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
 import { Workflow } from "@/models/workflow-model";
 import { Slack } from "@/models/slack-model";
 import { absolutePathUrl } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
-  const user = await currentUser();
   const code = req.nextUrl.searchParams.get("code");
+  const userId = req.nextUrl.searchParams.get("state");
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
@@ -19,9 +18,13 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Code not provided", { status: 400 });
   }
 
+  if (!userId) {
+    return new NextResponse("user not authenticated", { status: 401 });
+  }
+
   try {
     ConnectToDB();
-    const dbUser = await User.findOne<UserType>({ userId: user?.id });
+    const dbUser = await User.findOne<UserType>({ userId });
 
     const response = await fetch("https://slack.com/api/oauth.v2.access", {
       method: "POST",
@@ -49,6 +52,8 @@ export async function GET(req: NextRequest) {
       selectedNodeType: 1,
     });
 
+    console.log({ nodeMetaData });
+
     if (
       nodeMetaData?.selectedNodeId &&
       nodeMetaData?.selectedNodeType === "Slack"
@@ -64,7 +69,6 @@ export async function GET(req: NextRequest) {
         accessToken,
         nodeId: nodeMetaData.selectedNodeId,
         nodeType: nodeMetaData.selectedNodeType,
-        trigger: "",
         template: "",
         channelId: data.incoming_webhook.channel_id,
         channelName: data.incoming_webhook.channel,

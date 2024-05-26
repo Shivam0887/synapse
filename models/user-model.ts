@@ -32,100 +32,30 @@ export const UserSchema = new Schema(
       },
     ],
     currentWorkflowId: String,
-    WorkflowToDiscord: {
-      type: Map,
-      of: {
-        publish: Boolean,
-        metaData: {
-          channelId: String,
-          guildId: String,
-          trigger: String,
-        },
-        result: [
-          {
-            webhookUrl: String,
-            action: {
-              mode: {
-                type: String,
-                enum: ["default", "custom"],
-              },
-              message: String,
-              trigger: String,
-              user: String,
-            },
-            nodeId: String,
-            nodeType: {
-              type: String,
-              enum: ["Discord", "Notion", "Slack"],
-              required: true,
-            },
-            accessToken: String,
-            workflowId: String,
-          },
-        ],
-      },
-      default: () => {},
-    },
-    WorkflowToSlack: {
-      type: Map,
-      of: {
-        publish: Boolean,
-        metaData: {
-          channelId: String,
-          teamId: String,
-          trigger: String,
-        },
-        result: [
-          {
-            webhookUrl: String,
-            action: {
-              mode: {
-                type: String,
-                enum: ["default", "custom"],
-              },
-              message: String,
-              trigger: String,
-              user: String,
-            },
-            nodeId: String,
-            nodeType: {
-              type: String,
-              enum: ["Discord", "Notion", "Slack"],
-              required: true,
-            },
-            accessToken: String,
-            workflowId: String,
-          },
-        ],
-      },
-      default: () => {},
-    },
     WorkflowToDrive: {
       type: Map,
-      of: {
-        result: [
-          {
-            webhookUrl: String,
-            action: {
-              mode: {
-                type: String,
-                enum: ["default", "custom"],
-              },
-              message: String,
-              trigger: String,
-              user: String,
-            },
-            nodeId: String,
-            nodeType: {
+      of: [
+        {
+          webhookUrl: String,
+          action: {
+            mode: {
               type: String,
-              enum: ["Discord", "Notion", "Slack"],
-              required: true,
+              enum: ["default", "custom"],
             },
-            accessToken: String,
-            workflowId: String,
+            message: String,
+            trigger: String,
+            user: String,
           },
-        ],
-      },
+          nodeId: String,
+          nodeType: {
+            type: String,
+            enum: ["Discord", "Notion", "Slack"],
+            required: true,
+          },
+          accessToken: String,
+          workflowId: String,
+        }
+      ],
       default: () => {},
     },
     logs: [
@@ -158,4 +88,5 @@ UserSchema.index({ userId: 1 }, { unique: true });
 export type UserType = InferSchemaType<typeof UserSchema> & {
   _id?: Types.ObjectId;
 };
+
 export const User = models?.User || model("User", UserSchema);

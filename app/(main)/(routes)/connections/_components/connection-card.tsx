@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card";
 import Image from "next/image";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 
 type ConnectionCardProps = {
   type: ConnectionTypes;
@@ -24,6 +25,7 @@ const ConnectionCard = ({
   title,
   connected,
 }: ConnectionCardProps) => {
+  const user = useUser()
   return (
     <Card className="flex w-full items-center justify-between">
       <CardHeader className="space-y-4">
@@ -50,11 +52,11 @@ const ConnectionCard = ({
           <Link
             href={
               title == "Discord"
-                ? process.env.NEXT_PUBLIC_DISCORD_REDIRECT!
+                ? `${process.env.NEXT_PUBLIC_DISCORD_REDIRECT!}&state=${user.user?.id}`
                 : title == "Notion"
-                ? process.env.NEXT_PUBLIC_NOTION_AUTH_URL!
+                ? `${process.env.NEXT_PUBLIC_NOTION_AUTH_URL!}&state=${user.user?.id}`
                 : title == "Slack"
-                ? process.env.NEXT_PUBLIC_SLACK_REDIRECT!
+                ? `${process.env.NEXT_PUBLIC_SLACK_REDIRECT!}&state=${user.user?.id}`
                 : "#"
             }
             className="rounded-lg bg-primary p-2 font-bold text-primary-foreground"

@@ -154,15 +154,7 @@ export type ResultDataType = {
 };
 
 export type ResultType = {
-  Discord: {
-    metaData: { channelId: string; guildId: string; trigger: string };
-    result: ResultDataType[];
-  };
-  Slack: {
-    metaData: { channelId: string; teamId: string; trigger: string };
-    result: ResultDataType[];
-  };
-  "Google Drive": {
-    result: ResultDataType[];
-  };
+  Discord: ResultDataType[];
+  Slack: ResultDataType[];
+  "Google Drive": ResultDataType[];
 };

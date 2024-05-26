@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { StoreProvider } from "@/providers/store-provider";
 
 import { dark } from "@clerk/themes";
+import { cn } from "@/lib/utils";
 
 const font = DM_Sans({ subsets: ["latin"] });
 
@@ -29,7 +30,7 @@ export default function RootLayout({
     >
       <html lang="en" suppressHydrationWarning className="scroll-smooth">
         <head />
-        <body className={font.className}>
+        <body className={cn(font.className, "!pointer-events-auto")}>
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"

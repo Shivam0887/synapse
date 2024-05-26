@@ -237,12 +237,29 @@ export const onPublishWorkflow = async ({
           message: `please set the action for Notion node with id ${notionInstance.nodeId}`,
         });
 
-      await axios.post(`${absolutePathUrl()}/api/automate`, {
-        publish,
-        workflowId,
-        _id: dbUser?._id.toString(),
-        clerkUserId: user?.id,
-      });
+      if(publish){
+        await axios.post(`${absolutePathUrl()}/api/automate`, {
+          publish,
+          workflowId,
+          _id: dbUser?._id.toString(),
+          clerkUserId: user?.id,
+        });
+      }
+
+      if (workflow?.parentTrigger && !publish) {
+        if (workflow?.parentTrigger === "Google Drive" && dbUser.WorkflowToDrive.has(workflowId)) {
+         await Workflow.findByIdAndUpdate(workflowId, {
+           $set: {
+             "googleDriveWatchTrigger.isListening": false,
+           },
+         });
+
+         dbUser.WorkflowToDrive.delete(workflowId);
+         await dbUser.save();
+
+         await axios.get(`${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${user?.id}`);
+       }
+     }
 
       await Workflow.findOneAndUpdate(
         { _id: workflowId, userId: dbUser?._id },
@@ -436,8 +453,7 @@ export const updateNodeId = async (
       const user = await currentUser();
       const dbUser = await User.findOne({ userId: user?.id });
 
-      await Workflow.findOneAndUpdate(
-        { userId: dbUser?._id, workflowId },
+      await Workflow.findByIdAndUpdate(workflowId,
         {
           $set: {
             selectedNodeId: nodeId,

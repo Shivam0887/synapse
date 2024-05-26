@@ -19,7 +19,7 @@ export const WorkflowSchema = new Schema(
     name: { type: String, required: true },
     publish: { type: Boolean, default: () => false },
     description: { type: String, required: true },
-    selectedNodeId: { type: String, unique: true },
+    selectedNodeId: String,
     selectedNodeType: String,
 
     // a workspace can have multiple node except googleDrive

@@ -148,7 +148,7 @@ export async function POST(req: NextRequest) {
               const fileName = response.data.changes[0].file?.name;
               const driveName = response.data.changes[0].drive?.name;
 
-              await Promise.all(dbUser.WorkflowToDrive.get(workflowId)!.result.map(async (data) => {
+              await Promise.all(dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
                 const {
                   webhookUrl,
                   accessToken,
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
               const fileName = response.data.files[0].name;
               nextPageToken = response.data.nextPageToken
 
-              await Promise.all(dbUser.WorkflowToDrive.get(workflowId)!.result.map(async (data) => {
+              await Promise.all(dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
                 const {
                   webhookUrl,
                   accessToken,

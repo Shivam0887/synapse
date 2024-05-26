@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { LIMIT } from "@/lib/constant";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Loader2 } from "lucide-react";
+import { Ghost, Loader2 } from "lucide-react";
 import { getLogs } from "./_actions/log-action";
 
 const LogPage = () => {
@@ -24,11 +24,12 @@ const LogPage = () => {
         const result = JSON.parse(response);
         if (result.success) {
           if (result.data.length === 0) setHasMore(false);
-          else setHasMore(result.data[0].logs.length > LIMIT);
+          else {
+            setHasMore(result.data[0].logs.length > LIMIT);
+            const { logs } = result.data[0];
 
-          const { logs } = result.data[0];
-
-          setLogs((prev) => [...prev, ...logs]);
+            setLogs((prev) => [...prev, ...logs]);
+          }
         } else {
           console.log(result.error);
           toast.error(result.error);
@@ -63,6 +64,10 @@ const LogPage = () => {
               <span>{format(createdAt, "do MMM yy hh:mm:ss aaa")}</span>
             </React.Fragment>
           ))}
+        </div>
+        <div className="w-full h-full flex flex-col gap-2 items-center justify-center">
+          <Ghost />
+          Perform some actions, you will see something in here.
         </div>
         {hasMore && (
           <div className="mt-6 flex flex-col gap-2 items-center justify-center">

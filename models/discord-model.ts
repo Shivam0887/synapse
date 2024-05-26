@@ -14,10 +14,7 @@ export const DiscordSchema = new Schema(
     webhookName: String,
     guildName: String,
     guildId: String,
-    channelId: {
-      type: String,
-      unique: true,
-    },
+    channelId: String,    
     trigger: { type: String, enum: ["0", "1", "2", "3"] },
     action: {
       trigger: String,

@@ -1,6 +1,5 @@
 import axios from "axios";
 import ConnectToDB from "@/lib/connectToDB";
-import { currentUser } from "@clerk/nextjs/server";
 import { NextResponse, NextRequest } from "next/server";
 
 import { Discord } from "@/models/discord-model";
@@ -9,19 +8,19 @@ import { User, UserType } from "@/models/user-model";
 import { absolutePathUrl } from "@/lib/utils";
 
 export async function GET(req: NextRequest) {
-  const user = await currentUser();
   const code = req.nextUrl.searchParams.get("code");
+  const userId = req.nextUrl.searchParams.get("state");
 
   if (!code) {
     return new NextResponse("Code not provided", { status: 400 });
   }
-  if (!user) {
+  if (!userId) {
     return new NextResponse("user not authenticated", { status: 401 });
   }
 
   try {
     ConnectToDB();
-    const dbUser = await User.findOne<UserType>({ userId: user.id });
+    const dbUser = await User.findOne<UserType>({ userId });
 
     const response = await axios.post(
       "https://discord.com/api/oauth2/token",

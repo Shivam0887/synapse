@@ -27,6 +27,7 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-tooltip": "^1.0.7",
     "@slack/bolt": "^3.18.0",
+    "@slack/socket-mode": "^2.0.0",
     "@slack/web-api": "^7.0.4",
     "@stripe/stripe-js": "^3.4.1",
     "@uploadthing/react": "^6.4.1",

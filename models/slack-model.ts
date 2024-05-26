@@ -4,7 +4,7 @@ export const SlackSchema = new Schema(
   {
     appId: { type: String, required: true },
     authenticated_userId: { type: String, required: true },
-    authenticated_userToken: { type: String, unique: true },
+    authenticated_userToken: String,
     botUserId: { type: String, required: true },
     teamId: { type: String, required: true },
     teamName: { type: String, required: true },
@@ -15,7 +15,7 @@ export const SlackSchema = new Schema(
       type: String,
       default: () => "Slack",
     },
-    channelId: { type: String, unique: true },
+    channelId: String,
     webhookUrl: { type: String, unique: true },
     trigger: { type: String, enum: ["0", "1", "2", "3", "4"] },
     action: {
