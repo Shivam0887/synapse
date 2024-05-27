@@ -15,7 +15,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const absolutePathUrl = () => {
-  if (process.env.VERCEL_URL) return "https://synapse.vercel.app";
+  if (process.env.VERCEL_URL) return "https://synapsse.vercel.app";
   return "http://localhost:3000";
 };
 

@@ -95,7 +95,7 @@ export async function GET(req: NextRequest) {
             id: _channelId,
             type: "web_hook",
             resourceId: folderId,
-            address: `https://synapse.vercel.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
+            address: `https://synapsse.vercel.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
             kind: "api#channel",
           },
         });
@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
             resourceId,
             kind: "api#channel",
             type: "web_hook",
-            address: `https://synapse.vercel.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
+            address: `https://synapsse.vercel.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
             resourceUri,
           },
         });
