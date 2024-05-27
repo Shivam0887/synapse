@@ -75,7 +75,7 @@ export default function Home() {
                 <ul className="my-4 flex flex-col gap-2">
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    100 credits
+                    100 credits- 1 credit per automation task
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
@@ -83,10 +83,14 @@ export default function Home() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    Publish 50 workflows.
+                    Create 50 workflows.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon />
+                    Publish 25 workflows.
                   </li>
                   <li className="flex items-center gap-2 text-neutral-500">
-                    <X />
+                    <X className="h-7 w-7" />
                     Automatically save workflows to prevent data loss.
                   </li>
                   <li className="flex items-center gap-2 text-neutral-500">
@@ -134,10 +138,14 @@ export default function Home() {
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
-                    Publish unlimited workflows.
+                    Create unlimited workflows.
                   </li>
                   <li className="flex items-center gap-2">
                     <CheckIcon />
+                    Publish unlimited workflows.
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <CheckIcon className="h-7 w-7" />
                     Automatically save workflows to prevent data loss.
                   </li>
                   <li className="flex items-center gap-2">

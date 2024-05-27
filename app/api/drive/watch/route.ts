@@ -63,7 +63,8 @@ export async function GET(req: NextRequest) {
     let watchedResourceUri = "";
     let _channelId = "";
     let _resourceId = "";
-    const pageToken = (await drive.changes.getStartPageToken({})).data.startPageToken;
+    const pageToken = (await drive.changes.getStartPageToken({})).data
+      .startPageToken;
 
     if (result && result.googleDriveWatchTrigger?.isListening) {
       _channelId = uuidv4();
@@ -81,7 +82,7 @@ export async function GET(req: NextRequest) {
         changes === "true" &&
         includeRemoved &&
         restrictToMyDrive &&
-        supportedAllDrives && 
+        supportedAllDrives &&
         pageToken
       ) {
         const channel = await drive.changes.watch({
@@ -94,7 +95,7 @@ export async function GET(req: NextRequest) {
             id: _channelId,
             type: "web_hook",
             resourceId: folderId,
-            address: `https://hvxdtx9t-3000.inc1.devtunnels.ms/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
+            address: `https://synapse.vercel.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
             kind: "api#channel",
           },
         });
@@ -137,7 +138,7 @@ export async function GET(req: NextRequest) {
             resourceId,
             kind: "api#channel",
             type: "web_hook",
-            address: `https://hvxdtx9t-3000.inc1.devtunnels.ms/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
+            address: `https://synapse.vercel.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
             resourceUri,
           },
         });
@@ -150,7 +151,7 @@ export async function GET(req: NextRequest) {
         "googleDriveWatchTrigger.channelId": _channelId,
         "googleDriveWatchTrigger.resourceId": _resourceId,
         "googleDriveWatchTrigger.resourceUri": watchedResourceUri,
-        "googleDriveWatchTrigger.pageToken": pageToken
+        "googleDriveWatchTrigger.pageToken": pageToken,
       },
     });
 

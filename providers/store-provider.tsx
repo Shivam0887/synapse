@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useContext, createContext } from "react";
+import React, { useState, useContext, createContext, useRef } from "react";
 
 type initialStateType = {
   username: string;
@@ -9,6 +9,10 @@ type initialStateType = {
   setUsername: React.Dispatch<React.SetStateAction<string>>;
   localImageUrl: string;
   setLocalImageUrl: React.Dispatch<React.SetStateAction<string>>;
+  isChecked: boolean;
+  setIsChecked: React.Dispatch<React.SetStateAction<boolean>>;
+  isAutoSaving: boolean;
+  setIsAutoSaving: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 const StoreContext = createContext<initialStateType>({
@@ -18,12 +22,18 @@ const StoreContext = createContext<initialStateType>({
   username: "",
   email: "",
   setEmail: () => {},
+  isChecked: false,
+  setIsChecked: () => {},
+  isAutoSaving: false,
+  setIsAutoSaving: () => {},
 });
 
 export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [localImageUrl, setLocalImageUrl] = useState("");
+  const [isChecked, setIsChecked] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
 
   const value = {
     username,
@@ -32,6 +42,10 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
     setUsername,
     email,
     setEmail,
+    isChecked,
+    setIsChecked,
+    isAutoSaving,
+    setIsAutoSaving,
   };
 
   return (

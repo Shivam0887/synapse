@@ -10,6 +10,7 @@ import { StoreProvider } from "@/providers/store-provider";
 
 import { dark } from "@clerk/themes";
 import { cn } from "@/lib/utils";
+import { BillingProvider } from "@/providers/billing-provider";
 
 const font = DM_Sans({ subsets: ["latin"] });
 
@@ -39,7 +40,9 @@ export default function RootLayout({
           >
             <Toaster />
             <ModalProvider>
-              <StoreProvider>{children}</StoreProvider>
+              <BillingProvider>
+                <StoreProvider>{children}</StoreProvider>
+              </BillingProvider>
             </ModalProvider>
           </ThemeProvider>
         </body>

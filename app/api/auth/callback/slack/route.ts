@@ -52,8 +52,6 @@ export async function GET(req: NextRequest) {
       selectedNodeType: 1,
     });
 
-    console.log({ nodeMetaData });
-
     if (
       nodeMetaData?.selectedNodeId &&
       nodeMetaData?.selectedNodeType === "Slack"

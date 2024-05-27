@@ -128,50 +128,48 @@ const Workflow = ({
             />
           )}
         </div>
-        <div>
-          <Dialog>
+        <Dialog>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild className="cursor-pointer">
+              <MoreVertical />
+            </DropdownMenuTrigger>
             <DialogTrigger>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild className="cursor-pointer">
-                  <MoreVertical />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  className="p-2 min-w-max"
-                  align="end"
-                  sideOffset={20}
-                >
-                  <DropdownMenuItem className="flex max-w-max cursor-pointer items-center gap-2">
-                    <Trash className="w-4 h-4 text-red-600" />
-                    <span className="text-sm">delete</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <DropdownMenuContent
+                className="p-2 min-w-max"
+                align="end"
+                sideOffset={20}
+              >
+                <DropdownMenuItem className="flex max-w-max cursor-pointer items-center gap-2">
+                  <Trash className="w-4 h-4 text-red-600" />
+                  <span className="text-sm">delete</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
             </DialogTrigger>
-            <DialogContent>
-              <Card className="border-none">
-                <CardHeader>
-                  <CardTitle className="text-red-500 text-lg text-center">
-                    Workflow delete?
-                  </CardTitle>
-                  <CardDescription className="text-[18px] text-white">
-                    Are you sure you want to delete this workflow? This action
-                    is irreversible.
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter className="flex items-center justify-between">
-                  <DialogClose
-                    className={buttonVariants({ variant: "secondary" })}
-                  >
-                    Cancel
-                  </DialogClose>
-                  <Button variant="destructive" onClick={handleClick}>
-                    Delete
-                  </Button>
-                </CardFooter>
-              </Card>
-            </DialogContent>
-          </Dialog>
-        </div>
+          </DropdownMenu>
+          <DialogContent>
+            <Card className="border-none">
+              <CardHeader>
+                <CardTitle className="text-red-500 text-lg text-center">
+                  Workflow delete?
+                </CardTitle>
+                <CardDescription className="text-[18px] text-white">
+                  Are you sure you want to delete this workflow? This action is
+                  irreversible.
+                </CardDescription>
+              </CardHeader>
+              <CardFooter className="flex items-center justify-between">
+                <DialogClose
+                  className={buttonVariants({ variant: "secondary" })}
+                >
+                  Cancel
+                </DialogClose>
+                <Button variant="destructive" onClick={handleClick}>
+                  Delete
+                </Button>
+              </CardFooter>
+            </Card>
+          </DialogContent>
+        </Dialog>
       </div>
     </Card>
   );

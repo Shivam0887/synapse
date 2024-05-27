@@ -34,22 +34,31 @@ import {
   changeTrigger,
   deleteNode,
   onGetNodesEdges,
+  onWorkflowSave,
 } from "../../_actions/workflow-action";
 import { addConnection } from "../../../connections/_actions/connection-action";
+import { getUser } from "../../../connections/_actions/get-user";
+import { useBilling } from "@/providers/billing-provider";
+import { useStore } from "@/providers/store-provider";
 
 type CustomEdgeType = { id: string; source: string; target: string };
 
 const Editor = () => {
   const { dispatch, state } = useEditor();
-  const { editorId } = useParams() as { editorId: string };
-  const [isPublished, setIsPublished] = useState(false);
 
+  const { editorId } = useParams() as { editorId: string };
+
+  const { setCredits, tier, setTier } = useBilling();
+  const { setIsAutoSaving, isChecked } = useStore();
+
+  const [isPublished, setIsPublished] = useState(false);
   const [nodes, setNodes] = useState<CustomNodeType[]>([]);
   const [edges, setEdges] = useState<CustomEdgeType[]>([]);
   const [isWorkflowLoading, setIsWorkflowLoading] = useState<boolean>(false);
-  const [reactFlowInstance, setReactFlowInstance] =
-    useState<ReactFlowInstance>();
+  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance>();
 
+  const isPremiumUser = useMemo(() => tier === "Premium Plan", [tier]);
+  
   const nodeTypes = useMemo(
     () => ({
       AI: CustomNode,
@@ -63,13 +72,17 @@ const Editor = () => {
     []
   );
 
+  const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.effectAllowed = "move";
+  }, []);
+
   const onDrop = useCallback(
-    (e: React.DragEvent<HTMLDivElement>) => {
+    async (e: React.DragEvent<HTMLDivElement>) => {
       e.preventDefault();
 
-      const type = e.dataTransfer.getData("application/reactflow") as
-        | CustomNodeTypes
-        | undefined;
+      const type = e.dataTransfer.getData("application/reactflow") as CustomNodeTypes | undefined;
+
       if (!type) return;
 
       if (!reactFlowInstance) return;
@@ -93,58 +106,89 @@ const Editor = () => {
         },
       };
 
-      reactFlowInstance.setNodes((nodes) => nodes.concat(newNode));
+      let tempNodes: any[] = [];
+      reactFlowInstance.setNodes((nodes) => {
+        const updatedNodes = nodes.concat(newNode);
+        tempNodes = updatedNodes;
+        return updatedNodes;
+      });
 
-      toast.warning(<p>save the workflow after node insertion</p>);
+      if(isPremiumUser && isChecked){
+        setIsAutoSaving(true);
+        onWorkflowSave({
+          nodes: JSON.stringify(tempNodes),
+          workflowId: editorId,
+        })
+        .catch((error: any) => console.log(error?.message))
+        .finally(() => setIsAutoSaving(false))
+        
+      } else toast.warning(<p>save the workflow after node insertion</p>)
+
     },
-    [reactFlowInstance]
+    [reactFlowInstance, isPremiumUser, editorId, setIsAutoSaving, isChecked]
   );
 
-  const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.dataTransfer.effectAllowed = "move";
-  }, []);
-
   const onNodesChange = useCallback(
-    (changes: NodeChange[]) =>
+    (changes: NodeChange[]) => {
+      let updatedNodes: CustomNodeType[] = [];
+
       setNodes((nodes) => {
-        const updatedNodes = applyNodeChanges(
-          changes,
-          nodes
-        ) as CustomNodeType[];
+        updatedNodes = applyNodeChanges(changes, nodes) as CustomNodeType[];
+
         return updatedNodes;
-      }),
-    [setNodes]
+      });
+
+      if (changes[0].type === "remove" && isPremiumUser && isChecked) {
+        setIsAutoSaving(true);
+        onWorkflowSave({
+          nodes: JSON.stringify(updatedNodes),
+          workflowId: editorId,
+        })
+        .catch((error: any) => console.log(error?.message))
+        .finally(() => setIsAutoSaving(false))
+      }
+    },
+    [setNodes, editorId, isPremiumUser, setIsAutoSaving, isChecked]
   );
 
   const onNodesDelete = useCallback(
-    async (nodes: CustomNodeType[]) => {
-      const nodeId = nodes[0].id;
-      const nodeType = nodes[0].type;
+    async (nds: CustomNodeType[]) => {
+      const nodeId = nds[0].id;
+      const nodeType = nds[0].type;
 
-      const response = await deleteNode(editorId, nodeId, nodeType!);
-      if (response) {
-        const data = JSON.parse(response);
-        if (data.success) {
-          await changeTrigger(editorId, "", "None");
+      try {
+        const response = await deleteNode(editorId, nodeId, nodeType!);
+        if (response) {
+          const data = JSON.parse(response);
+          if (data.success) {
+            const result = await changeTrigger(editorId, "", "None", data.id as string);
 
-          toast.success(data.data);
-          setTimeout(() => {
-            toast.warning(<p>save the workflow after node deletion</p>);
-          }, 1000);
+            if(result && JSON.parse(result).type === "Node"){
+              setTimeout(() => {
+                toast.warning(
+                  <p>Current trigger is not set to a valid trigger.</p>
+                );
+              }, 1000);
+            }
 
-          setTimeout(() => {
-            toast.warning(
-              <p>Current trigger is not set to a valid trigger.</p>
-            );
-          }, 1000);
-        } else {
-          if (data.message) toast.message(data.message);
-          else toast.error(data.error);
+            if (!isPremiumUser) {
+              setTimeout(() => {
+                toast.warning(<p>save the workflow after node deletion</p>);
+              }, 1000);
+            }
+
+            toast.success(data.data);
+          } 
+          else {
+            if (data.message) toast.message(data.message);
+            else toast.error(data.error);
+          }
         }
+      } catch (error: any) {
+        console.log(error?.message);
       }
     },
-    [editorId]
+    [editorId, isPremiumUser]
   );
 
   const onEdgesChange = useCallback(
@@ -154,10 +198,8 @@ const Editor = () => {
       if (changes[0].type === "remove") {
         const edgeId = changes[0].id;
         const edge = edges.find((edge) => edge.id === edgeId);
-        const sourceNodeType = nodes.find((node) => node.id === edge?.source)
-          ?.data.type;
-        const targetNodeType = nodes.find((node) => node.id === edge?.target)
-          ?.data.type;
+        const sourceNodeType = nodes.find((node) => node.id === edge?.source)?.data.type;
+        const targetNodeType = nodes.find((node) => node.id === edge?.target)?.data.type;
 
         //saving the edge connection changes in DB.
         if (sourceNodeType && targetNodeType && edge?.source && edge?.target) {
@@ -174,9 +216,16 @@ const Editor = () => {
                 const data = JSON.parse(response);
                 if (!data.success) {
                   if (data.message) toast.message(data.message);
-                  else {
-                    toast.error(data.error);
-                  }
+                  else toast.error(data.error);
+                } 
+                else if(isPremiumUser && isChecked){
+                  setIsAutoSaving(true);
+                  onWorkflowSave({
+                    edges: JSON.stringify(applyEdgeChanges(changes, edges)),
+                    workflowId: editorId,
+                  })
+                  .catch((error: any) => console.log(error?.message))
+                  .finally(() => setIsAutoSaving(false))
                 }
               }
             })
@@ -186,25 +235,17 @@ const Editor = () => {
         }
       }
     },
-    [setEdges, nodes, edges, editorId]
+    [setEdges, nodes, edges, editorId, isPremiumUser, setIsAutoSaving, isChecked]
   );
 
-  const onConnect = useCallback(
-    (connection: Connection) => {
-      const sourceNodeType = nodes.find((node) => node.id === connection.source)
-        ?.data.type;
-      const targetNodeType = nodes.find((node) => node.id === connection.target)
-        ?.data.type;
+  const onConnect = useCallback((connection: Connection) => {
+      const sourceNodeType = nodes.find((node) => node.id === connection.source)?.data.type;
+      const targetNodeType = nodes.find((node) => node.id === connection.target)?.data.type;
 
       setEdges((edges) => addEdge(connection, edges));
 
       //saving the edge connection changes in DB.
-      if (
-        sourceNodeType &&
-        targetNodeType &&
-        connection.source &&
-        connection.target
-      ) {
+      if (sourceNodeType && targetNodeType && connection.source && connection.target) {
         addConnection({
           sourceId: connection.source,
           targetId: connection.target,
@@ -227,6 +268,15 @@ const Editor = () => {
                     },
                   ]);
                 }
+              } 
+              else if(isPremiumUser && isChecked){
+                setIsAutoSaving(true);
+                onWorkflowSave({
+                  edges: JSON.stringify(addEdge(connection, edges)),
+                  workflowId: editorId,
+                })
+                .catch((error: any) => console.log(error?.message))
+                .finally(() => setIsAutoSaving(false))
               }
             }
           })
@@ -235,7 +285,7 @@ const Editor = () => {
           });
       }
     },
-    [setEdges, editorId, nodes, onEdgesChange]
+    [setEdges, editorId, nodes, edges, onEdgesChange, isPremiumUser, setIsAutoSaving, isChecked]
   );
 
   const onClick = (e: React.MouseEvent<HTMLDivElement> | undefined) => {
@@ -260,29 +310,37 @@ const Editor = () => {
     });
   };
 
-  const onGetWorkFlow = useCallback(async () => {
-    setIsWorkflowLoading(true);
-    const response = await onGetNodesEdges({ flowId: editorId });
-    if (response) {
-      const data = JSON.parse(response);
-      if (data.status) {
-        const _edges = data.data.edges as CustomEdgeType[];
-        const _nodes = data.data.nodes as CustomNodeType[];
-
-        setEdges(_edges);
-        setNodes(_nodes);
-      } else toast.error(data.error);
-    }
-    setIsWorkflowLoading(false);
-  }, [editorId]);
-
   useEffect(() => {
     dispatch({ type: "LOAD_DATA", payload: { edges, nodes } });
   }, [nodes, edges, dispatch]);
 
   useEffect(() => {
-    onGetWorkFlow();
-  }, [onGetWorkFlow]);
+    (async () => {
+      setIsWorkflowLoading(true);
+      const response = await onGetNodesEdges({ flowId: editorId });
+      if (response) {
+        const data = JSON.parse(response);
+        if (data.status) {
+          const _edges = data.data.edges as CustomEdgeType[];
+          const _nodes = data.data.nodes as CustomNodeType[];
+  
+          setEdges(_edges);
+          setNodes(_nodes);
+        } else toast.error(data.error);
+      }
+      setIsWorkflowLoading(false);
+    })();
+
+    (async () => {
+      const response = await getUser();
+      if (response) {
+        const data = JSON.parse(response);
+        setCredits(data.credits);
+        setTier(data.tier);
+      }
+    })();
+
+  }, [editorId, setCredits, setTier]);
 
   return (
     <ResizablePanelGroup direction="horizontal">

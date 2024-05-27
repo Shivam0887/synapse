@@ -42,6 +42,29 @@ export async function getUserSubscriptionPlan() {
       dbUser.stripeCurrentPeriodEnd.getTime() + 86_400_000 > Date.now()
   );
 
+  if (!isSubscribed && dbUser.stripePriceId) {
+    await User.findByIdAndUpdate(dbUser._id, {
+      $set: {
+        tier: "Free Plan",
+        credits: "0",
+        isAutoSave: false,
+        stripeCurrentPeriodEnd: null,
+        stripeSubscriptionId: null,
+        stripeCustomerId: null,
+        stripePriceId: null,
+      },
+    });
+
+    return {
+      tier: "Free Plan",
+      isSubscribed,
+      isCanceled: true,
+      stripeCurrentPeriodEnd: null,
+      stripeSubscriptionId: null,
+      stripeCustomerId: null,
+    };
+  }
+
   let isCanceled = false;
   if (isSubscribed && dbUser.stripeSubscriptionId) {
     const stripePlan = await stripe.subscriptions.retrieve(

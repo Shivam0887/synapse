@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 import ConnectToDB from "@/lib/connectToDB";
 import { ConnectionTypes, ResultDataType, ResultType } from "@/lib/types";
 
-import { User } from "@/models/user-model";
+import { User, UserType } from "@/models/user-model";
 import { Slack, SlackType } from "@/models/slack-model";
 import { Notion, NotionType } from "@/models/notion-model";
 import { Discord, DiscordType } from "@/models/discord-model";
@@ -19,6 +19,9 @@ import { ChannelCreatedEvent, KnownEventFromType, MemberJoinedChannelEvent, Reac
 import { Client, GatewayIntentBits, GuildMember, Message, MessageReaction, PartialMessageReaction } from 'discord.js';
 
 import { SocketModeClient } from "@slack/socket-mode";
+import { revalidatePath } from "next/cache";
+
+export const revalidate = true;
 
 export const SlackClient = new SocketModeClient({
   appToken: process.env.SLACK_APP_TOKEN!,
@@ -171,8 +174,24 @@ const onMessageSend = async ({
   nodeId,
   workflowId,
   accessToken,
-  DiscordClient
-}: ResultDataType & { DiscordClient?: Client<boolean> }) => {
+  DiscordClient,
+  _id
+}: ResultDataType & { DiscordClient?: Client<boolean>, _id: string }) => {
+  ConnectToDB();
+
+  const dbUser = await User.findById(_id, {
+    credits: 1,
+    tier: 1
+  });
+
+  if (dbUser && dbUser.tier !== "Premium Plan") {
+    await User.findByIdAndUpdate(dbUser._id, {
+      $set: {
+        credits: `${parseInt(dbUser.credits) - 1}`,
+      },
+    });
+  }
+
   if (nodeType === "Notion") {
     await onCreatePage({
       workflowId: workflowId!,
@@ -201,6 +220,33 @@ const onMessageSend = async ({
   }
 };
 
+const hasCredits = async (workflowId: string, _id: string, userId: string) => {
+  ConnectToDB();
+  const workflow = await Workflow.findById<Pick<WorkflowType, "publish">>(workflowId, { _id: 0, publish: 1 });
+  const dbUser = await User.findById<Pick<UserType, 'credits' | 'tier'>>(_id, {
+    credits: 1,
+    tier: 1
+  });
+
+  const isLimit = ((workflow && !workflow.publish) || (dbUser && dbUser.tier !== "Premium Plan" && parseInt(dbUser.credits) === 0));
+
+  if(isLimit){
+    await Workflow.findByIdAndUpdate(workflowId, {
+      $set: {
+        publish: false
+      }
+    });
+
+    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${userId}`, {
+      status: false,
+      action: "Limit Exceeds",
+      message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
+    });
+  }
+
+  return isLimit;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { publish, workflowId, _id, clerkUserId } = reqSchema.parse(await req.json());
@@ -211,7 +257,6 @@ export async function POST(req: NextRequest) {
       "Google Drive": [],
     };
     
-
     ConnectToDB();
 
     const dbUser = await User.findById(_id, {
@@ -268,19 +313,20 @@ export async function POST(req: NextRequest) {
 
             if (collection.trigger === "0" || collection.trigger === "1"){
               async function onDiscordMessageCreate (message: Message) {
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   DiscordClient.off("messageCreate", onDiscordMessageCreate);
                 }
                 else if (!message.author.bot && collection.channelId === message.channelId) {
                   result["Discord"].forEach((data) => {
                     if (!(!!message.mentions.users.size || !!message.mentions.roles.size))
-                      onMessageSend(data);
+                      onMessageSend({ ...data, _id });
                   });
               
                   result["Discord"].forEach((data) => {
                     if (!!message.mentions.users.size || !!message.mentions.roles.size)
-                      onMessageSend(data);
+                      onMessageSend({ ...data, _id});
                   });
                 }
               }
@@ -289,12 +335,13 @@ export async function POST(req: NextRequest) {
             }
             else if (collection.trigger === "2"){
               async function onDiscordReactionAdd (reaction: MessageReaction | PartialMessageReaction) {
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   DiscordClient.off("messageReactionAdd", onDiscordReactionAdd);
                 }
                 else if (collection.channelId === reaction.message.channelId) {
-                  result["Discord"].forEach((data) => onMessageSend(data));
+                  result["Discord"].forEach((data) => onMessageSend({ ...data, _id}));
                 }
               }
 
@@ -302,12 +349,13 @@ export async function POST(req: NextRequest) {
             }
             else if (collection.trigger === "3"){
               async function onDiscordMemberJoin (member: GuildMember){
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   DiscordClient.off("guildMemberAdd", onDiscordMemberJoin);
                 }
                 else if (collection.guildId === member.guild.id) {
-                  result["Discord"].forEach((data) => onMessageSend(data));
+                  result["Discord"].forEach((data) => onMessageSend({ ...data, _id}));
                 }
               }
 
@@ -323,8 +371,9 @@ export async function POST(req: NextRequest) {
               async function onSlackMessageCreate({ event, ack }: { event: KnownEventFromType<"message">, ack: any } ){
                 if(ack) await ack();
 
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   SlackClient.off("message", onSlackMessageCreate);
                 }
                 else if(event && collection.channelId === event?.channel && event?.channel_type === "channel"){
@@ -338,11 +387,11 @@ export async function POST(req: NextRequest) {
                         }
                       }
               
-                      onMessageSend({ ...data, action: updatedAction });
+                      onMessageSend({ ...data, action: updatedAction, _id });
                     })
                   } else if(!event.subtype){
                     result["Slack"].forEach((data) => {
-                      onMessageSend(data);
+                      onMessageSend({ ...data, _id});
                     });
                   }
                 }
@@ -354,13 +403,14 @@ export async function POST(req: NextRequest) {
               async function onSlackReactionAdd ({ event, ack }: { event: ReactionAddedEvent, ack: any }) {
                 if(ack) await ack();
 
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   SlackClient.off("reaction_added", onSlackReactionAdd);
                 }
                 else if(event && collection.channelId === event?.item.channel){
                   result["Slack"].forEach((data) => {
-                    onMessageSend(data);
+                    onMessageSend({ ...data, _id});
                   });
                 }
               }
@@ -371,13 +421,14 @@ export async function POST(req: NextRequest) {
               async function onSlackChannelCreate ({ event, ack }: { event: ChannelCreatedEvent, ack: any }) {
                 if(ack) await ack();
 
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   SlackClient.off("channel_created", onSlackChannelCreate);
                 }
                 else if(event && collection.channelId === event?.channel.id && event?.channel.is_channel){
                   result["Slack"].forEach((data) => {
-                    onMessageSend(data);
+                    onMessageSend({ ...data, _id});
                   });
                 }
               }
@@ -388,13 +439,14 @@ export async function POST(req: NextRequest) {
               async function onSlackMemberJoin ({ event, ack }: { event: MemberJoinedChannelEvent, ack: any }) {
                 if(ack) await ack();
 
-                const workflow = await Workflow.findById(workflowId, { _id: 0, publish: 1 });
-                if(workflow && !workflow.publish){
+                const isLimit = await hasCredits(workflowId, _id, clerkUserId);
+
+                if(isLimit){
                   SlackClient.off("member_joined_channel", onSlackMemberJoin);
                 }
                 else if(event && collection.channelId === event?.channel && event?.channel_type === "channel" && event.team === collection.teamId){
                   result["Slack"].forEach((data) => {
-                    onMessageSend(data);
+                    onMessageSend({ ...data, _id});
                   });
                 }
               }

@@ -8,7 +8,6 @@ import {
   getNodeData,
 } from "../../_actions/workflow-action";
 
-import { useStore } from "@/providers/store-provider";
 import { useEditor } from "@/providers/editor-provider";
 import { useNodeConnections } from "@/providers/connections-provider";
 
@@ -35,25 +34,27 @@ import { onConnections, onDrapStart } from "@/lib/editor-utils";
 import { ConnectionTypes, CustomNodeTypes } from "@/lib/types";
 import { CustomNodeDefaultValues } from "@/lib/constant";
 import ServiceAction from "./actions/service-action";
-import { Info } from "lucide-react";
+import { Crown, Info } from "lucide-react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ActionTooltip from "@/components/globals/action-tooltip";
 import { Button } from "@/components/ui/button";
 import { getTrigger } from "../../../connections/_actions/connection-action";
+import { useBilling } from "@/providers/billing-provider";
 
 type EditorSidebarProps = {
   isPublished: boolean;
 };
 
 const EditorSidebar = ({ isPublished }: EditorSidebarProps) => {
+  const { tier } = useBilling();
+  const { editorId } = useParams() as { editorId: string };
+
   const { nodes, selectedNode } = useEditor().state.editor;
   const { nodeConnection } = useNodeConnections();
+
   const [isConnected, setIsConnected] = useState<boolean>(false);
-  const [parentTrigger, setParentTrigger] = useState({
-    type: "Google Drive",
-    id: "",
-  });
-  const { editorId } = useParams() as { editorId: string };
+  const [parentTrigger, setParentTrigger] = useState({type: "Google Drive", id: ""});
+
   const isGoogleDriveNodeExists = nodes.some(
     ({ type }) => type === "Google Drive"
   );
@@ -178,7 +179,7 @@ const EditorSidebar = ({ isPublished }: EditorSidebarProps) => {
                 .map(([key, { description }]) => (
                   <Card
                     key={key}
-                    draggable
+                    draggable={key === "AI" ? tier === "Premium Plan" : true}
                     className="w-full cursor-grab border-black dark:border-neutral-700 dark:bg-neutral-900"
                     onDragStart={(e) => onDrapStart(e, key as CustomNodeTypes)}
                   >
@@ -187,9 +188,24 @@ const EditorSidebar = ({ isPublished }: EditorSidebarProps) => {
                         <CustomNodeIcon type={key as CustomNodeTypes} />
                       </div>
                       <div>
-                        <CardTitle className="text-base">{key}</CardTitle>
-                        <CardDescription>{description}</CardDescription>
+                        <CardTitle className="select-none text-base">
+                          {key}
+                        </CardTitle>
+                        <CardDescription className="select-none">
+                          {description}
+                        </CardDescription>
                       </div>
+                      {key === "AI" && tier !== "Premium Plan" && (
+                        <TooltipProvider>
+                          <ActionTooltip
+                            label={
+                              <Crown className="cursor-pointer stroke-yellow-400 fill-yellow-400" />
+                            }
+                          >
+                            Subscribe to Premium Plan
+                          </ActionTooltip>
+                        </TooltipProvider>
+                      )}
                     </CardHeader>
                   </Card>
                 ))}

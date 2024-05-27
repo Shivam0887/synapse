@@ -15,7 +15,6 @@ export const WorkflowSchema = new Schema(
       default: () => "[]",
     },
     nodeMetadata: String,
-    cronPath: String,
     name: { type: String, required: true },
     publish: { type: Boolean, default: () => false },
     description: { type: String, required: true },

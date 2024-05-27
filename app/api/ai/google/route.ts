@@ -1,4 +1,7 @@
+import ConnectToDB from "@/lib/connectToDB";
 import { Model } from "@/lib/gemini-prompt";
+import { User, UserType } from "@/models/user-model";
+import { currentUser } from "@clerk/nextjs/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError, z } from "zod";
@@ -30,6 +33,19 @@ const promptSchema = z.object({
 export const POST = async (req: NextRequest) => {
   try {
     const { prompt } = promptSchema.parse(await req.json());
+
+    ConnectToDB();
+    const user = await currentUser();
+    const dbUser = await User.findOne<UserType>(
+      { userId: user?.id },
+      { tier: 1 }
+    );
+
+    if (!dbUser) throw new Error("user is not authenticated");
+
+    if (dbUser && dbUser.tier !== "Premium Plan") {
+      throw new Error("Bad request");
+    }
 
     const result = await chat.sendMessage(prompt);
     let response = result.response.text();

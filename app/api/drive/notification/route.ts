@@ -12,6 +12,8 @@ import { Client, GatewayIntentBits } from "discord.js";
 import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 import { ResultDataType } from "@/lib/types";
+import { absolutePathUrl } from "@/lib/utils";
+import { revalidatePath } from "next/cache";
 // Create a new client instance
 const DiscordClient = new Client({
   intents: [
@@ -73,18 +75,26 @@ export async function POST(req: NextRequest) {
     if (resourceId && userId) {
       ConnectToDB();
       const dbUser = await User.findOne<
-        Pick<UserType, "_id" | "WorkflowToDrive" | "credits">
+        Pick<UserType, "_id" | "WorkflowToDrive" | "credits" | "tier">
       >(
         {
           userId,
           workflowId,
         },
-        { WorkflowToDrive: 1, credits: 1 }
+        { WorkflowToDrive: 1, credits: 1, tier: 1 }
       );
+
+      if (!dbUser) {
+        throw new Error("user is not authenticated");
+      }
 
       const workflow = await Workflow.findById<
         Pick<WorkflowType, "_id" | "googleDriveWatchTrigger">
       >(workflowId, { googleDriveWatchTrigger: 1 });
+
+      if (!workflow) {
+        throw new Error("workflow not found");
+      }
 
       const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
@@ -111,15 +121,16 @@ export async function POST(req: NextRequest) {
         auth: oauth2Client,
       });
 
-      if (
-        dbUser &&
-        workflow
-        // (dbUser?.credits === "Unlimited" || parseInt(dbUser.credits!) > 0) &&
-      ) {
+      if (dbUser.credits === "Unlimited" || parseInt(dbUser.credits) > 0) {
         const { googleDriveWatchTrigger } = workflow;
 
         if (googleDriveWatchTrigger?.changes === "true") {
-          const { includeRemoved, restrictToMyDrive, supportedAllDrives, pageToken } = googleDriveWatchTrigger;
+          const {
+            includeRemoved,
+            restrictToMyDrive,
+            supportedAllDrives,
+            pageToken,
+          } = googleDriveWatchTrigger;
           let nextPageToken = pageToken;
 
           if (
@@ -148,39 +159,41 @@ export async function POST(req: NextRequest) {
               const fileName = response.data.changes[0].file?.name;
               const driveName = response.data.changes[0].drive?.name;
 
-              await Promise.all(dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
-                const {
-                  webhookUrl,
-                  accessToken,
-                  nodeType,
-                  nodeId,
-                  action,
-                  workflowId,
-                } = data;
+              await Promise.all(
+                dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
+                  const {
+                    webhookUrl,
+                    accessToken,
+                    nodeType,
+                    nodeId,
+                    action,
+                    workflowId,
+                  } = data;
 
-                let updatedAction = action;
-                if (nodeType === "Discord" || nodeType === "Slack") {
-                  updatedAction = {
-                    ...action,
-                    message:
-                      action!.message +
-                      (changeType === "file" && !isRemoved
-                        ? `${fileName!} file.`
-                        : changeType === "drive" && !isRemoved
-                        ? `${driveName!} drive.`
-                        : ""),
-                  };
-                }
+                  let updatedAction = action;
+                  if (nodeType === "Discord" || nodeType === "Slack") {
+                    updatedAction = {
+                      ...action,
+                      message:
+                        action!.message +
+                        (changeType === "file" && !isRemoved
+                          ? `${fileName!} file.`
+                          : changeType === "drive" && !isRemoved
+                          ? `${driveName!} drive.`
+                          : ""),
+                    };
+                  }
 
-                await onMessageSend({
-                  webhookUrl,
-                  accessToken,
-                  nodeType,
-                  nodeId,
-                  action: updatedAction,
-                  workflowId,
-                });
-              }));
+                  await onMessageSend({
+                    webhookUrl,
+                    accessToken,
+                    nodeType,
+                    nodeId,
+                    action: updatedAction,
+                    workflowId,
+                  });
+                })
+              );
             }
           }
         } else if (googleDriveWatchTrigger?.files === "true") {
@@ -204,44 +217,66 @@ export async function POST(req: NextRequest) {
               response.data.files.length > 0
             ) {
               const fileName = response.data.files[0].name;
-              nextPageToken = response.data.nextPageToken
+              nextPageToken = response.data.nextPageToken;
 
-              await Promise.all(dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
-                const {
-                  webhookUrl,
-                  accessToken,
-                  nodeType,
-                  nodeId,
-                  action,
-                  workflowId,
-                } = data;
+              await Promise.all(
+                dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
+                  const {
+                    webhookUrl,
+                    accessToken,
+                    nodeType,
+                    nodeId,
+                    action,
+                    workflowId,
+                  } = data;
 
-                let updatedAction = action;
-                if (nodeType === "Discord" || nodeType === "Slack") {
-                  updatedAction = {
-                    ...action,
-                    message: action!.message + `${fileName} file.`,
-                  };
-                }
+                  let updatedAction = action;
+                  if (nodeType === "Discord" || nodeType === "Slack") {
+                    updatedAction = {
+                      ...action,
+                      message: action!.message + `${fileName} file.`,
+                    };
+                  }
 
-                await onMessageSend({
-                  webhookUrl,
-                  accessToken,
-                  nodeType,
-                  nodeId,
-                  action: updatedAction,
-                  workflowId,
-                });
-              }));
+                  await onMessageSend({
+                    webhookUrl,
+                    accessToken,
+                    nodeType,
+                    nodeId,
+                    action: updatedAction,
+                    workflowId,
+                  });
+                })
+              );
             }
           }
         }
 
-        // await User.findByIdAndUpdate(dbUser?._id, {
-        //   $set: {
-        //     credits: `${parseInt(dbUser?.credits!) - 1}`,
-        //   },
-        // });
+        if (dbUser.tier !== "Premium Plan") {
+          await User.findByIdAndUpdate(dbUser._id, {
+            $set: {
+              credits: `${parseInt(dbUser.credits) - 1}`,
+            },
+          });
+
+        }
+      } else {
+        await Workflow.findByIdAndUpdate(workflowId, {
+          $set: {
+            "googleDriveWatchTrigger.isListening": false,
+            publish: false,
+          },
+        });
+
+        await axios.get(
+          `${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${userId}`
+        );
+
+        await axios.patch(`${absolutePathUrl()}/api/logs?userId=${userId}`, {
+          status: false,
+          action: "Limit Exceeds",
+          message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
+        });
       }
     }
 

@@ -35,6 +35,40 @@ export const createWorkflow = async ({
     ConnectToDB();
     const dbUser = await User.findOne<UserType>({ userId: user?.id });
 
+    if (!dbUser) {
+      throw new Error("user is not authenticated");
+    }
+
+    const plan = dbUser.tier as "Free Plan" | "Pro Plan" | "Premium Plan";
+    const workflowLimit = {
+      "Free Plan": 5,
+      "Pro Plan": 50,
+    };
+
+    const isLimit =
+      plan === "Premium Plan"
+        ? false
+        : workflowLimit[plan] === dbUser.workflowId.length;
+
+    if (isLimit) {
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: false,
+        action: "Workflow create",
+        message:
+          plan === "Free Plan"
+            ? "Limit reached! Please upgrade to Pro/Premium Plan"
+            : "Limit reached! Please upgrade to Premium Plan",
+      });
+
+      return {
+        success: false,
+        message:
+          plan === "Free Plan"
+            ? "Limit reached! Please upgrade to Pro/Premium Plan"
+            : "Limit reached! Please upgrade to Premium Plan",
+      };
+    }
+
     const workflow: WorkflowType = await Workflow.create({
       userId: dbUser?._id,
       name,
@@ -75,29 +109,39 @@ export const createWorkflow = async ({
 export const onWorkflowSave = async ({
   edges,
   workflowId,
-  nodeMetadata,
   nodes,
 }: {
   workflowId: string;
-  nodes: string;
-  edges: string;
-  nodeMetadata: string;
+  nodes?: string;
+  edges?: string;
 }) => {
   const user = await currentUser();
   try {
     ConnectToDB();
-    const dbUser = await User.findOne({ userId: user?.id });
+    const dbUser = await User.findOne<UserType>({ userId: user?.id });
 
-    const workflow = await Workflow.findOneAndUpdate(
-      { _id: workflowId, userId: dbUser?._id },
-      {
-        $set: {
-          edges,
-          nodes,
-          nodeMetadata,
-        },
+    if (dbUser && dbUser.tier === "Premium Plan") {
+      const workflow = await Workflow.findById<WorkflowType>(workflowId);
+
+      if (workflow) {
+        await Workflow.findByIdAndUpdate(workflow._id, {
+          $set: {
+            nodes: nodes ? nodes : workflow.nodes,
+            edges: edges ? edges : workflow.edges,
+          },
+        });
       }
-    );
+    } else {
+      await Workflow.findOneAndUpdate(
+        { _id: workflowId, userId: dbUser?._id },
+        {
+          $set: {
+            edges,
+            nodes,
+          },
+        }
+      );
+    }
 
     await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
       status: true,
@@ -161,12 +205,61 @@ export const onPublishWorkflow = async ({
     ConnectToDB();
     const dbUser = await User.findOne({ userId: user?.id });
 
+    if (!dbUser) {
+      throw new Error("user is not authenticated");
+    }
+
+    const plan = dbUser.tier as "Free Plan" | "Pro Plan" | "Premium Plan";
+    const publishLimit = {
+      "Free Plan": 3,
+      "Pro Plan": 25,
+    };
+
+    const publishCount = await Workflow.aggregate([
+      {
+        $match: { userId: dbUser._id },
+      },
+      {
+        $project: { _id: 0, publish: 1 },
+      },
+      {
+        $match: { publish: true },
+      },
+      {
+        $count: "count",
+      },
+    ]);
+
+    const isLimit =
+      plan === "Premium Plan" || publishCount.length === 0
+        ? false
+        : publishLimit[plan] === publishCount[0].count;
+
+    if (isLimit) {
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: false,
+        action: "Workflow publish",
+        message:
+          plan === "Free Plan"
+            ? "Limit reached! Please upgrade to Pro/Premium Plan"
+            : "Limit reached! Please upgrade to Premium Plan",
+      });
+
+      return JSON.stringify({
+        success: false,
+        message:
+          plan === "Free Plan"
+            ? "Limit reached! Please upgrade to Pro/Premium Plan"
+            : "Limit reached! Please upgrade to Premium Plan",
+      });
+    }
+
     const workflow = await Workflow.findById<WorkflowWithNodes>(workflowId, {
       discordId: 1,
       slackId: 1,
       notionId: 1,
       googleDriveWatchTrigger: 1,
-      nodeMetadata: 1,
+      nodes: 1,
       parentTrigger: 1,
     })
       .populate({
@@ -186,7 +279,11 @@ export const onPublishWorkflow = async ({
       });
 
     if (workflow) {
-      const nodeMetadata = JSON.parse(workflow.nodeMetadata!) as {
+      const nodes = JSON.parse(workflow.nodes!);
+      const nodeMetadata = nodes.map((node: any) => ({
+        nodeId: node.id,
+        nodeType: node.type,
+      })) as {
         nodeId: string;
         nodeType: ConnectionTypes;
       }[];
@@ -237,7 +334,7 @@ export const onPublishWorkflow = async ({
           message: `please set the action for Notion node with id ${notionInstance.nodeId}`,
         });
 
-      if(publish){
+      if (publish) {
         await axios.post(`${absolutePathUrl()}/api/automate`, {
           publish,
           workflowId,
@@ -247,19 +344,26 @@ export const onPublishWorkflow = async ({
       }
 
       if (workflow?.parentTrigger && !publish) {
-        if (workflow?.parentTrigger === "Google Drive" && dbUser.WorkflowToDrive.has(workflowId)) {
-         await Workflow.findByIdAndUpdate(workflowId, {
-           $set: {
-             "googleDriveWatchTrigger.isListening": false,
-           },
-         });
+        if (
+          workflow?.parentTrigger === "Google Drive" &&
+          dbUser.WorkflowToDrive.has(workflowId)
+        ) {
+          await Workflow.findByIdAndUpdate(workflowId, {
+            $set: {
+              "googleDriveWatchTrigger.isListening": false,
+            },
+          });
 
-         dbUser.WorkflowToDrive.delete(workflowId);
-         await dbUser.save();
+          dbUser.WorkflowToDrive.delete(workflowId);
+          await dbUser.save();
 
-         await axios.get(`${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${user?.id}`);
-       }
-     }
+          await axios.get(
+            `${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${
+              user?.id
+            }`
+          );
+        }
+      }
 
       await Workflow.findOneAndUpdate(
         { _id: workflowId, userId: dbUser?._id },
@@ -453,14 +557,12 @@ export const updateNodeId = async (
       const user = await currentUser();
       const dbUser = await User.findOne({ userId: user?.id });
 
-      await Workflow.findByIdAndUpdate(workflowId,
-        {
-          $set: {
-            selectedNodeId: nodeId,
-            selectedNodeType: nodeType,
-          },
-        }
-      );
+      await Workflow.findByIdAndUpdate(workflowId, {
+        $set: {
+          selectedNodeId: nodeId,
+          selectedNodeType: nodeType,
+        },
+      });
 
       return JSON.stringify({
         success: true,
@@ -488,6 +590,8 @@ export const deleteNode = async (
     if (workflowId && nodeId && nodeType) {
       ConnectToDB();
       const dbUser = await User.findOne({ userId: user?.id });
+
+      let id = "";
 
       if (nodeType === "Google Drive") {
         await Workflow.findByIdAndUpdate(workflowId, {
@@ -530,9 +634,11 @@ export const deleteNode = async (
         );
 
         if (deletedNode) {
+          id = deletedNode._id.toString();
+
           await Workflow.findByIdAndUpdate(workflowId, {
             $pull: {
-              [key]: deletedNode?._id,
+              [key]: deletedNode._id,
             },
           });
         }
@@ -547,6 +653,7 @@ export const deleteNode = async (
       return JSON.stringify({
         success: true,
         data: `${nodeType} node deleted successfully!`,
+        id,
       });
     }
 
@@ -596,18 +703,26 @@ export const getCurrentTrigger = async (workflowId: string) => {
 export const changeTrigger = async (
   workflowId: string,
   nodeId: string,
-  nodeType: ConnectionTypes | "None"
+  nodeType: ConnectionTypes | "None",
+  id?: string
 ) => {
   const user = await currentUser();
   try {
     ConnectToDB();
-    if (nodeType === "Google Drive" || nodeType === "None") {
-      const googleDriveTrigger = await Workflow.findById(workflowId, {
-        googleDriveWatchTrigger: 1,
-      });
+
+    if (id) {
+      const workflow = await Workflow.findByIdAndUpdate<WorkflowType>(
+        workflowId,
+        {
+          parentTrigger: 1,
+          parentId: 1,
+        }
+      );
+
       if (
-        googleDriveTrigger?.googleDriveWatchTrigger?.isListening ||
-        nodeType === "None"
+        workflow &&
+        workflow.parentId === id &&
+        workflow.parentTrigger === nodeType
       ) {
         await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
           $set: {
@@ -615,37 +730,50 @@ export const changeTrigger = async (
             parentId: "",
           },
         });
-        return JSON.stringify({ type: nodeType, id: "" });
       }
-    } else if (nodeType === "Discord" || nodeType === "Slack") {
-      const Model = nodeType === "Discord" ? Discord : Slack;
-      const collection = await Model.findOne<{ _id: Types.ObjectId }>(
-        { workflowId, nodeId },
-        { _id: 1 }
-      );
 
-      if (collection) {
+      return JSON.stringify({ type: "None", id: "" });
+    } else {
+      if (nodeType === "Google Drive" || nodeType === "None") {
         await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
           $set: {
             parentTrigger: nodeType,
-            parentId: collection?._id,
+            parentId: "",
           },
         });
 
-        return JSON.stringify({
-          type: nodeType,
-          id: nodeId,
-        });
+        return JSON.stringify({ type: nodeType, id: "" });
+      } else if (nodeType === "Discord" || nodeType === "Slack") {
+        const Model = nodeType === "Discord" ? Discord : Slack;
+
+        const collection = await Model.findOne<{ _id: Types.ObjectId }>(
+          { workflowId, nodeId },
+          { _id: 1 }
+        );
+
+        if (collection) {
+          await Workflow.findByIdAndUpdate<WorkflowType>(workflowId, {
+            $set: {
+              parentTrigger: nodeType,
+              parentId: collection?._id,
+            },
+          });
+
+          return JSON.stringify({
+            type: nodeType,
+            id: nodeId,
+          });
+        }
       }
+
+      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+        status: true,
+        action: "Workflow Trigger change",
+        message: `Workflow Id: ${workflowId}, trigger changed to ${nodeType} successfully!`,
+      });
+
+      return JSON.stringify({ type: "None", id: "" });
     }
-
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: true,
-      action: "Workflow Trigger change",
-      message: `Workflow Id: ${workflowId}, trigger changed to ${nodeType} successfully!`,
-    });
-
-    return JSON.stringify({ type: "None", id: "" });
   } catch (error: any) {
     console.log(error?.message);
   }

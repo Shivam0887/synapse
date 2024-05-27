@@ -31,6 +31,15 @@ export const UserSchema = new Schema(
         ref: "Workflow",
       },
     ],
+    workflowPublishCount: {
+      type: Number,
+      default: () => 0,
+    },
+    isAutoSave: {
+      type: Boolean,
+      enum: [true, false],
+      default: () => false,
+    },
     currentWorkflowId: String,
     WorkflowToDrive: {
       type: Map,
@@ -54,7 +63,7 @@ export const UserSchema = new Schema(
           },
           accessToken: String,
           workflowId: String,
-        }
+        },
       ],
       default: () => {},
     },
