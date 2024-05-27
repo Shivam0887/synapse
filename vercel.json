@@ -1,0 +1,10 @@
+{
+  "build": {
+    "env": {
+      "PYTHON_VERSION": "3.x"
+    },
+    "commands": {
+      "preBuild": "apt-get update && apt-get install -y python3-distutils python3-setuptools"
+    }
+  }
+}

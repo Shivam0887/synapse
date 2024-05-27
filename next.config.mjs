@@ -15,7 +15,11 @@ const nextConfig = {
   webpack: (config, options) => {
     config.module.rules.push({
       test: /\.node$/,
-      use: "node-loader",
+      use: [
+        {
+          loader: "node-loader",
+        },
+      ],
     });
 
     return config;
