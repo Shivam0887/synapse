@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "apt-get update && apt-get install -y python3-distutils python3-setuptools && next build",
+    "preinstall": "pip install python3-distutils",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
