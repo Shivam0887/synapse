@@ -8,24 +8,10 @@ import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { mapper } from "@/lib/constant";
 
 // Import the necessary modules from discord.js
-import { Client, GatewayIntentBits } from "discord.js";
 import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 import { ResultDataType } from "@/lib/types";
 import { absolutePathUrl } from "@/lib/utils";
-import { revalidatePath } from "next/cache";
-// Create a new client instance
-const DiscordClient = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent,
-  ],
-});
-
-// Log in to Discord with your app's token
-DiscordClient.login(process.env.DISCORD_BOT_TOKEN!);
 
 export const onMessageSend = async ({
   nodeType,
@@ -44,8 +30,36 @@ export const onMessageSend = async ({
   } else if (action?.trigger) {
     if (nodeType === "Discord") {
       if (action.trigger === "1") {
-        const user = DiscordClient.users.cache.get(action.user!);
-        if (user) user.send(action.message!);
+        const channelResponse = await axios.post(
+          "https://discord.com/api/v10/users/@me/channels",
+          {
+            recipient_id: action.user!,
+          },
+          {
+            headers: {
+              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        const channelId = channelResponse.data?.id;
+
+        if (channelId) {
+          // Step 2: Send a message to the DM channel
+          await axios.post(
+            `https://discord.com/api/v10/channels/${channelId}/messages`,
+            {
+              content: action.message!,
+            },
+            {
+              headers: {
+                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
       } else await postContentToWebhook(action.message!, webhookUrl!, nodeType);
     } else {
       if (action.trigger === "1") {
@@ -258,7 +272,6 @@ export async function POST(req: NextRequest) {
               credits: `${parseInt(dbUser.credits) - 1}`,
             },
           });
-
         }
       } else {
         await Workflow.findByIdAndUpdate(workflowId, {
