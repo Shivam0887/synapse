@@ -1,15 +1,8 @@
 import { Discord, DiscordType } from "@/models/discord-model";
-import { Client, GatewayIntentBits } from "discord.js";
+import axios from "axios";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-
-// Create a new client instance
-const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
-});
-
-// Log in to Discord with your app's token
-client.login(process.env.DISCORD_BOT_TOKEN!);
+import { APIGuildChannel, GuildChannelType, APIGuildMember } from "discord-api-types/v10";
 
 const reqBodySchema = z.object({
   workflowId: z.string(),
@@ -30,27 +23,35 @@ export async function POST(req: NextRequest) {
 
     if (discordInstance) {
       const fetchMembers = async () => {
-        const guild = await client.guilds.fetch(discordInstance.guildId!);
-        const channel = await guild?.channels.fetch(discordInstance.channelId!);
-        const members = (await channel?.guild.members.fetch())?.toJSON();
-
-        members?.forEach((member) => {
-          if (!member.user.bot) {
-            users.push({ id: member.user.id, username: member.user.username });
+        const guild = await axios.get<APIGuildChannel<GuildChannelType>[]>(`https://discord.com/api/v10/guilds/${discordInstance.guildId!}/channels`, {
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`
           }
         });
+        const channel = guild.data.some(({id}) => id === discordInstance.channelId!);
+
+        if(channel){
+        const members = await axios.get<APIGuildMember[]>(`https://discord.com/api/v10/guilds/${discordInstance.guildId!}/members?limit=1000`, {
+          headers: {
+            Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`
+          }
+        });
+          members.data.forEach(({ user }) => {
+            if (user && !user.bot) {
+              users.push({ id: user.id, username: user.username });
+            }
+          });
+        }       
       };
 
       // Wait for the ready event before fetching members
-      await new Promise((resolve, reject) => {
-        client.once("ready", async () => {
+      await new Promise(async (resolve, reject) => {
           try {
             await fetchMembers();
             resolve("users");
           } catch (error) {
             reject(error);
           }
-        });
       });
 
       return NextResponse.json({ success: true, users }, { status: 200 });

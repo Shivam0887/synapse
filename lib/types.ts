@@ -158,3 +158,34 @@ export type ResultType = {
   Slack: ResultDataType[];
   "Google Drive": ResultDataType[];
 };
+
+type DiscordUser = {
+  id: string;
+  username: string;
+  bot?: boolean;
+};
+
+export type EventData = {
+  MESSAGE_CREATE: {
+    channel_id: string;
+    mentions: DiscordUser[];
+    mention_roles: string[];
+    type: number; // DEFAULT (0), REPLY (19)
+    webhook_id?: string;
+    author: DiscordUser;
+  };
+  MESSAGE_REACTION_ADD: {
+    user_id: string;
+    channel_id: string;
+    guild_id?: string;
+    emoji: {
+      id?: string;
+      name?: string;
+    };
+    type: number; // NORMAL (0)
+  };
+  GUILD_MEMBER_ADD: {
+    guild_id: string;
+    user?: DiscordUser;
+  };
+};

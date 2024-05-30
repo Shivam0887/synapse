@@ -4,7 +4,7 @@ import { absolutePathUrl } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 import ConnectToDB from "@/lib/connectToDB";
-import { ConnectionTypes, ResultDataType, ResultType } from "@/lib/types";
+import { ConnectionTypes, EventData, ResultDataType, ResultType } from "@/lib/types";
 
 import { User, UserType } from "@/models/user-model";
 import { Slack, SlackType } from "@/models/slack-model";
@@ -16,10 +16,9 @@ import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 
 import { ChannelCreatedEvent, KnownEventFromType, MemberJoinedChannelEvent, ReactionAddedEvent } from "@slack/bolt";
-import { Client, GatewayIntentBits, GuildMember, Message, MessageReaction, PartialMessageReaction } from 'discord.js';
 
 import { SocketModeClient } from "@slack/socket-mode";
-import { revalidatePath } from "next/cache";
+import DiscordClient from "@/lib/discord-bot";
 
 export const revalidate = true;
 
@@ -27,14 +26,7 @@ export const SlackClient = new SocketModeClient({
   appToken: process.env.SLACK_APP_TOKEN!,
 });
 
-export const DiscordClient = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.MessageContent,
-  ],
-});
+export const discordClient = new DiscordClient(process.env.DISCORD_BOT_TOKEN!);
 
 const reqSchema = z.object({
   publish: z.boolean(),
@@ -174,9 +166,8 @@ const onMessageSend = async ({
   nodeId,
   workflowId,
   accessToken,
-  DiscordClient,
   _id
-}: ResultDataType & { DiscordClient?: Client<boolean>, _id: string }) => {
+}: ResultDataType & { _id: string }) => {
   ConnectToDB();
 
   const dbUser = await User.findById(_id, {
@@ -201,8 +192,36 @@ const onMessageSend = async ({
   } else if (action?.trigger) {
     if (nodeType === "Discord") {
       if (action.trigger === "1") {
-        const user = DiscordClient!.users.cache.get(action.user!);
-        if (user) user.send(action.message!);
+        const channelResponse = await axios.post(
+          'https://discord.com/api/v10/users/@me/channels',
+          {
+            recipient_id: action.user!,
+          },
+          {
+            headers: {
+              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+    
+        const channelId = channelResponse.data?.id;
+    
+        if(channelId){
+           // Step 2: Send a message to the DM channel
+        await axios.post(
+          `https://discord.com/api/v10/channels/${channelId}/messages`,
+          {
+            content: action.message!,
+          },
+          {
+            headers: {
+              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
+              'Content-Type': 'application/json',
+            },
+          }
+        );
+        }       
       } else await postContentToWebhook(action.message!, webhookUrl!, nodeType);
     } else {
       if (action.trigger === "1") {
@@ -309,57 +328,62 @@ export async function POST(req: NextRequest) {
           if (workflow.parentTrigger === "Discord" && collection.channelId && collection.guildId && collection.trigger) {
             await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false, result);
 
-            await DiscordClient.login(process.env.DISCORD_BOT_TOKEN!);
+            discordClient.connect();
 
             if (collection.trigger === "0" || collection.trigger === "1"){
-              async function onDiscordMessageCreate (message: Message) {
+              async function onDiscordMessageCreate (message: EventData["MESSAGE_CREATE"]) {
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
                 if(isLimit){
-                  DiscordClient.off("messageCreate", onDiscordMessageCreate);
+                  discordClient.off("messageCreate", onDiscordMessageCreate);
+                  discordClient.disconnect();
                 }
-                else if (!message.author.bot && collection.channelId === message.channelId) {
-                  result["Discord"].forEach((data) => {
-                    if (!(!!message.mentions.users.size || !!message.mentions.roles.size))
-                      onMessageSend({ ...data, _id });
-                  });
-              
-                  result["Discord"].forEach((data) => {
-                    if (!!message.mentions.users.size || !!message.mentions.roles.size)
-                      onMessageSend({ ...data, _id});
-                  });
+                else if(!message.webhook_id){
+                  if (!message.author.bot && collection.channelId === message.channel_id) {
+                    result["Discord"].forEach((data) => {
+                      if (!(!!message.mentions.length || !!message.mention_roles.length))
+                        onMessageSend({ ...data, _id });
+                    });
+                
+                    result["Discord"].forEach((data) => {
+                      if (!!message.mentions.length || !!message.mention_roles.length)
+                        onMessageSend({ ...data, _id});
+                    });
+                  }
                 }
               }
 
-              DiscordClient.on("messageCreate", onDiscordMessageCreate);
+              discordClient.on("messageCreate", onDiscordMessageCreate);
             }
             else if (collection.trigger === "2"){
-              async function onDiscordReactionAdd (reaction: MessageReaction | PartialMessageReaction) {
+              async function onDiscordReactionAdd (reaction: EventData["MESSAGE_REACTION_ADD"]) {
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
                 if(isLimit){
-                  DiscordClient.off("messageReactionAdd", onDiscordReactionAdd);
+                  discordClient.off("messageReactionAdd", onDiscordReactionAdd);
+                  discordClient.disconnect();
                 }
-                else if (collection.channelId === reaction.message.channelId) {
+                else if (collection.channelId === reaction.channel_id) {
                   result["Discord"].forEach((data) => onMessageSend({ ...data, _id}));
                 }
               }
 
-              DiscordClient.on("messageReactionAdd", onDiscordReactionAdd);
+              discordClient.on("messageReactionAdd", onDiscordReactionAdd);
             }
             else if (collection.trigger === "3"){
-              async function onDiscordMemberJoin (member: GuildMember){
+              async function onDiscordMemberJoin (member: EventData["GUILD_MEMBER_ADD"]){
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
                 if(isLimit){
-                  DiscordClient.off("guildMemberAdd", onDiscordMemberJoin);
+                  discordClient.off("guildMemberAdd", onDiscordMemberJoin);
+                  discordClient.disconnect();
                 }
-                else if (collection.guildId === member.guild.id) {
+                else if (collection.guildId === member.guild_id) {
                   result["Discord"].forEach((data) => onMessageSend({ ...data, _id}));
                 }
               }
 
-              DiscordClient.on("guildMemberAdd", onDiscordMemberJoin);
+              discordClient.on("guildMemberAdd", onDiscordMemberJoin);
             }
           }
           else if (workflow.parentTrigger === "Slack" && collection.channelId && collection.teamId && collection.trigger) {
