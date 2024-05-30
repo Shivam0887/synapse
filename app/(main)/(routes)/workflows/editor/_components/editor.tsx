@@ -10,6 +10,7 @@ import ReactFlow, {
   Controls,
   EdgeChange,
   MiniMap,
+  Node,
   NodeChange,
   ReactFlowInstance,
   addEdge,
@@ -152,9 +153,9 @@ const Editor = () => {
   );
 
   const onNodesDelete = useCallback(
-    async (nds: CustomNodeType[]) => {
+    async (nds: Node[]) => {
       const nodeId = nds[0].id;
-      const nodeType = nds[0].type;
+      const nodeType = nds[0].type as CustomNodeTypes;
 
       try {
         const response = await deleteNode(editorId, nodeId, nodeType!);
