@@ -7,7 +7,6 @@ import axios from "axios";
 import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { mapper } from "@/lib/constant";
 
-// Import the necessary modules from discord.js
 import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 import { ResultDataType } from "@/lib/types";

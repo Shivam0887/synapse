@@ -20,13 +20,11 @@ import { ChannelCreatedEvent, KnownEventFromType, MemberJoinedChannelEvent, Reac
 import { SocketModeClient } from "@slack/socket-mode";
 import DiscordClient from "@/lib/discord-bot";
 
-export const revalidate = true;
-
-export const SlackClient = new SocketModeClient({
+const SlackClient = new SocketModeClient({
   appToken: process.env.SLACK_APP_TOKEN!,
 });
 
-export const discordClient = new DiscordClient(process.env.DISCORD_BOT_TOKEN!);
+const discordClient = new DiscordClient(process.env.DISCORD_BOT_TOKEN!);
 
 const reqSchema = z.object({
   publish: z.boolean(),
