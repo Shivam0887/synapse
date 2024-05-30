@@ -12,7 +12,7 @@ import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions
 import { ResultDataType } from "@/lib/types";
 import { absolutePathUrl } from "@/lib/utils";
 
-export const onMessageSend = async ({
+const onMessageSend = async ({
   nodeType,
   action,
   webhookUrl,
