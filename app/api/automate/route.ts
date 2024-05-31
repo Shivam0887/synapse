@@ -272,11 +272,14 @@ const hasCredits = async (workflowId: string, _id: string, userId: string) => {
       },
     });
 
-    await axios.patch(`https://synapse-zxh8.onrender.com/api/logs?userId=${userId}`, {
-      status: false,
-      action: "Limit Exceeds",
-      message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
-    });
+    await axios.patch(
+      `https://synapsse.netlify.app/api/logs?userId=${userId}`,
+      {
+        status: false,
+        action: "Limit Exceeds",
+        message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
+      }
+    );
   }
 
   return isLimit;
@@ -362,7 +365,7 @@ export async function POST(req: NextRequest) {
           await dbUser.save();
 
           await axios.get(
-            `https://synapse-zxh8.onrender.com/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
+            `https://synapsse.netlify.app/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
           );
         } else if (
           workflow.parentId &&

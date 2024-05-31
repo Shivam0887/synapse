@@ -21,7 +21,7 @@ const SettingsPage = async () => {
     await User.findByIdAndUpdate(dbUser?._id, { $set: { localImageUrl: "" } });
 
     await axios.patch(
-      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
+      `https://synapsse.netlify.app/api/logs?userId=${user?.id}`,
       {
         status: true,
         action: "User Info",
@@ -38,7 +38,7 @@ const SettingsPage = async () => {
     await User.findByIdAndUpdate(dbUser?._id, { $set: { name } });
 
     await axios.patch(
-      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
+      `https://synapsse.netlify.app/api/logs?userId=${user?.id}`,
       {
         status: true,
         action: "User Info",
