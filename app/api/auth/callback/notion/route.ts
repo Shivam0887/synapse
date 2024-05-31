@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (error) {
-    return NextResponse.redirect(`https://synapsse.vercel.app/workflows`);
+    return NextResponse.redirect(`https://synapse-zxh8.onrender.com/workflows`);
   }
 
   if (!code) {
@@ -88,7 +88,7 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.redirect(
-          `https://synapsse.vercel.app/workflows/editor/${dbUser?.currentWorkflowId}`
+          `https://synapse-zxh8.onrender.com/workflows/editor/${dbUser?.currentWorkflowId}`
         );
       }
     } else if (error) {
@@ -96,6 +96,6 @@ export async function GET(req: NextRequest) {
     }
   } catch (error: any) {
     console.log(error?.message);
-    return NextResponse.redirect(`https://synapsse.vercel.app/workflows`);
+    return NextResponse.redirect(`https://synapse-zxh8.onrender.com/workflows`);
   }
 }

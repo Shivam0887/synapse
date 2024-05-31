@@ -281,11 +281,11 @@ export async function POST(req: NextRequest) {
         });
 
         await axios.get(
-          `https://synapsse.vercel.app/api/drive/watch?workflowId=${workflowId}&userId=${userId}`
+          `https://synapse-zxh8.onrender.com/api/drive/watch?workflowId=${workflowId}&userId=${userId}`
         );
 
         await axios.patch(
-          `https://synapsse.vercel.app/api/logs?userId=${userId}`,
+          `https://synapse-zxh8.onrender.com/api/logs?userId=${userId}`,
           {
             status: false,
             action: "Limit Exceeds",

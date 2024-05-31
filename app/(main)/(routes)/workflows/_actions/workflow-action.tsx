@@ -52,7 +52,7 @@ export const createWorkflow = async ({
 
     if (isLimit) {
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: false,
           action: "Workflow create",
@@ -85,7 +85,7 @@ export const createWorkflow = async ({
     });
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: true,
         action: "Workflow create",
@@ -103,7 +103,7 @@ export const createWorkflow = async ({
   } catch (error: any) {
     console.log(error?.message);
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Workflow create",
@@ -153,7 +153,7 @@ export const onWorkflowSave = async ({
     }
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: true,
         action: "Workflow save",
@@ -165,7 +165,7 @@ export const onWorkflowSave = async ({
   } catch (error: any) {
     console.log(error?.message);
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Workflow save",
@@ -252,7 +252,7 @@ export const onPublishWorkflow = async ({
 
     if (isLimit) {
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: false,
           action: "Workflow publish",
@@ -353,7 +353,7 @@ export const onPublishWorkflow = async ({
         });
 
       if (publish) {
-        await axios.post(`https://synapsse.vercel.app/api/automate`, {
+        await axios.post(`https://synapse-zxh8.onrender.com/api/automate`, {
           publish,
           workflowId,
           _id: dbUser?._id.toString(),
@@ -376,7 +376,7 @@ export const onPublishWorkflow = async ({
           await dbUser.save();
 
           await axios.get(
-            `https://synapsse.vercel.app/api/drive/watch?workflowId=${workflowId}&userId=${user?.id}`
+            `https://synapse-zxh8.onrender.com/api/drive/watch?workflowId=${workflowId}&userId=${user?.id}`
           );
         }
       }
@@ -391,7 +391,7 @@ export const onPublishWorkflow = async ({
       );
 
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: true,
           action: "Workflow publish",
@@ -413,7 +413,7 @@ export const onPublishWorkflow = async ({
   } catch (error: any) {
     console.log(error?.message);
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Workflow publish",
@@ -667,7 +667,7 @@ export const deleteNode = async (
       }
 
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: true,
           action: "Workflow node delete",
@@ -683,7 +683,7 @@ export const deleteNode = async (
     }
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Workflow node delete",
@@ -699,7 +699,7 @@ export const deleteNode = async (
     console.log(error?.message);
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Workflow node delete",
@@ -798,7 +798,7 @@ export const changeTrigger = async (
       }
 
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: true,
           action: "Workflow Trigger change",
@@ -837,7 +837,7 @@ export const deleteWorkflow = async (workflowId: string) => {
     const workflow = await Workflow.findById(workflowId);
     if (!workflow) {
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: false,
           action: "Workflow delete",
@@ -848,7 +848,7 @@ export const deleteWorkflow = async (workflowId: string) => {
     }
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: true,
         action: "Workflow delete",
@@ -870,7 +870,7 @@ export const deleteWorkflow = async (workflowId: string) => {
   } catch (error: any) {
     console.log(error?.message);
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Workflow delete",

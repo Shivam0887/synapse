@@ -130,7 +130,7 @@ export const onSaveTrigger = async (
       }
 
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: true,
           action: "Trigger Save",
@@ -145,7 +145,7 @@ export const onSaveTrigger = async (
     }
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Trigger Save",
@@ -160,7 +160,7 @@ export const onSaveTrigger = async (
   } catch (error: any) {
     console.log(error?.message);
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
       {
         status: false,
         action: "Trigger Save",
@@ -211,7 +211,7 @@ export const onSaveAction = async ({
       );
 
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${_user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${_user?.id}`,
         {
           status: true,
           action: "Action Save",
@@ -226,7 +226,7 @@ export const onSaveAction = async ({
     }
 
     await axios.patch(
-      `https://synapsse.vercel.app/api/logs?userId=${_user?.id}`,
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${_user?.id}`,
       {
         status: false,
         action: "Action Save",
@@ -281,7 +281,7 @@ export const onSaveNotionAction = async ({
       );
 
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: true,
           action: "Action Save",
@@ -295,7 +295,7 @@ export const onSaveNotionAction = async ({
       });
     } else {
       await axios.patch(
-        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
         {
           status: false,
           action: "Action Save",
@@ -358,7 +358,7 @@ export const addConnection = async ({
 
         if (!target) {
           await axios.patch(
-            `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+            `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
             {
               status: false,
               action: "Edge Connection",
@@ -375,7 +375,7 @@ export const addConnection = async ({
           const isGoogleDriveConnected = await getDriveInfo();
           if (!isGoogleDriveConnected) {
             await axios.patch(
-              `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+              `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
               {
                 status: false,
                 action: "Edge Connection",
@@ -412,7 +412,7 @@ export const addConnection = async ({
 
           if (!source) {
             await axios.patch(
-              `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+              `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
               {
                 status: false,
                 action: "Edge Connection",

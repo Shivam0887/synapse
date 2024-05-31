@@ -272,7 +272,7 @@ const hasCredits = async (workflowId: string, _id: string, userId: string) => {
       },
     });
 
-    await axios.patch(`https://synapsse.vercel.app/api/logs?userId=${userId}`, {
+    await axios.patch(`https://synapse-zxh8.onrender.com/api/logs?userId=${userId}`, {
       status: false,
       action: "Limit Exceeds",
       message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
@@ -362,7 +362,7 @@ export async function POST(req: NextRequest) {
           await dbUser.save();
 
           await axios.get(
-            `https://synapsse.vercel.app/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
+            `https://synapse-zxh8.onrender.com/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
           );
         } else if (
           workflow.parentId &&

@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
         client_id: process.env.DISCORD_CLIENT_ID!,
         client_secret: process.env.DISCORD_CLIENT_SECRET!,
         grant_type: "authorization_code",
-        redirect_uri: `https://synapsse.vercel.app/api/auth/callback/discord`,
+        redirect_uri: `https://synapse-zxh8.onrender.com/api/auth/callback/discord`,
       }),
       {
         headers: {
@@ -105,7 +105,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.redirect(
-      `https://synapsse.vercel.app/workflows/editor/${dbUser?.currentWorkflowId}`
+      `https://synapse-zxh8.onrender.com/workflows/editor/${dbUser?.currentWorkflowId}`
     );
   } catch (error: any) {
     console.log(error?.message);

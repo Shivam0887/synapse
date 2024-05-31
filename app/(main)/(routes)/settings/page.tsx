@@ -20,11 +20,14 @@ const SettingsPage = async () => {
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { localImageUrl: "" } });
 
-    await axios.patch(`https://synapsse.vercel.app/api/logs?userId=${user?.id}`, {
-      status: true,
-      action: "User Info",
-      message: `Profile photo removed successfully!`,
-    });
+    await axios.patch(
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
+      {
+        status: true,
+        action: "User Info",
+        message: `Profile photo removed successfully!`,
+      }
+    );
 
     revalidatePath("/settings");
   };
@@ -34,11 +37,14 @@ const SettingsPage = async () => {
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { name } });
 
-    await axios.patch(`https://synapsse.vercel.app/api/logs?userId=${user?.id}`, {
-      status: true,
-      action: "User Info",
-      message: `Username changed successfully!`,
-    });
+    await axios.patch(
+      `https://synapse-zxh8.onrender.com/api/logs?userId=${user?.id}`,
+      {
+        status: true,
+        action: "User Info",
+        message: `Username changed successfully!`,
+      }
+    );
   };
 
   return (
