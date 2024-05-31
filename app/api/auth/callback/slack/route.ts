@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`${absolutePathUrl()}/workflows`);
+    return NextResponse.redirect(`https://synapsse.vercel.app/workflows`);
   }
 
   if (!code) {
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 
     // Handle the successful OAuth flow and redirect the user
     return NextResponse.redirect(
-      `${absolutePathUrl()}/workflows/editor/${dbUser?.currentWorkflowId}`
+      `https://synapsse.vercel.app/workflows/editor/${dbUser?.currentWorkflowId}`
     );
   } catch (error: any) {
     console.error(error?.message);

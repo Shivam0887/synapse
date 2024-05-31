@@ -131,21 +131,18 @@ class DiscordClient {
         ws.close(1011, "Zombied Connection"); // Close with a non-1000/1001 code
         this.reconnectToGateway();
       }
-    }, this.heartbeatInterval * 0.75); // Check a bit before the next heartbeat is due
+    }, this.heartbeatInterval * 0.85); // Check a bit before the next heartbeat is due
   }
 
   private startHeartbeat(ws: WebSocket) {
     if (this.intervalId) clearInterval(this.intervalId);
-    if (this.heartbeatInterval === null) {
-      this.connectToGateway();
-      return;
-    }
-
-    this.sendHeartbeat(ws);
-
-    this.intervalId = setInterval(() => {
+    if (this.heartbeatInterval) {
       this.sendHeartbeat(ws);
-    }, this.heartbeatInterval);
+
+      this.intervalId = setInterval(() => {
+        this.sendHeartbeat(ws);
+      }, this.heartbeatInterval);
+    }
   }
 
   private handleHello(data: any, ws: WebSocket) {

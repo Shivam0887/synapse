@@ -281,14 +281,17 @@ export async function POST(req: NextRequest) {
         });
 
         await axios.get(
-          `${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${userId}`
+          `https://synapsse.vercel.app/api/drive/watch?workflowId=${workflowId}&userId=${userId}`
         );
 
-        await axios.patch(`${absolutePathUrl()}/api/logs?userId=${userId}`, {
-          status: false,
-          action: "Limit Exceeds",
-          message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
-        });
+        await axios.patch(
+          `https://synapsse.vercel.app/api/logs?userId=${userId}`,
+          {
+            status: false,
+            action: "Limit Exceeds",
+            message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
+          }
+        );
       }
     }
 

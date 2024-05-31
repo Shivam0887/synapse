@@ -51,31 +51,41 @@ const LogPage = () => {
         <span className="text-[#7540A9] font-medium text-lg">Time</span>
       </div>
       <div className="h-[60vh] overflow-scroll">
-        <div className="md:pr-10 pr-2 md:pl-20 pl-4 grid grid-cols-[15%_15%_50%_20%] content-start gap-2 ">
-          {logs.map(({ action, createdAt, message, status }, index) => (
-            <React.Fragment key={createdAt}>
-              <span className={status ? "text-emerald-500" : "text-red-500"}>
-                {status ? "success" : "failed"}
-              </span>
-              <span>{action}</span>
-              <span className="line-clamp-1" title={message}>
-                {message}
-              </span>
-              <span>{format(createdAt, "do MMM yy hh:mm:ss aaa")}</span>
-            </React.Fragment>
-          ))}
-        </div>
-        <div className="w-full h-full flex flex-col gap-2 items-center justify-center">
-          <Ghost />
-          Perform some actions, you will see something in here.
-        </div>
-        {hasMore && (
-          <div className="mt-6 flex flex-col gap-2 items-center justify-center">
-            <Button size="sm" onClick={() => setPageNum((prev) => prev + 1)}>
-              load more
-            </Button>
-            {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+        {logs.length === 0 ? (
+          <div className="w-full h-full flex flex-col gap-2 items-center justify-center">
+            <Ghost />
+            Perform some actions, you will see something in here.
           </div>
+        ) : (
+          <>
+            <div className="md:pr-10 pr-2 md:pl-20 pl-4 grid grid-cols-[15%_15%_50%_20%] content-start gap-2 ">
+              {logs.map(({ action, createdAt, message, status }, index) => (
+                <React.Fragment key={createdAt}>
+                  <span
+                    className={status ? "text-emerald-500" : "text-red-500"}
+                  >
+                    {status ? "success" : "failed"}
+                  </span>
+                  <span>{action}</span>
+                  <span className="line-clamp-1" title={message}>
+                    {message}
+                  </span>
+                  <span>{format(createdAt, "do MMM yy hh:mm:ss aaa")}</span>
+                </React.Fragment>
+              ))}
+            </div>
+            {hasMore && (
+              <div className="mt-6 flex flex-col gap-2 items-center justify-center">
+                <Button
+                  size="sm"
+                  onClick={() => setPageNum((prev) => prev + 1)}
+                >
+                  load more
+                </Button>
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

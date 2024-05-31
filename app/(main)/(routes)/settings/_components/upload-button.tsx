@@ -21,19 +21,25 @@ const UploadButton = ({ setProgress, label }: UploadButtonProps) => {
     onClientUploadComplete: async (files) => {
       setProgress(0);
       setLocalImageUrl(files[0].serverData.localImageUrl);
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: true,
-        action: "User Info",
-        message: `Profile photo changed successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: true,
+          action: "User Info",
+          message: `Profile photo changed successfully!`,
+        }
+      );
     },
     onUploadError: async (err) => {
       console.log(err.message);
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: false,
-        action: "User Info",
-        message: `Failed to upload profile photo successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: false,
+          action: "User Info",
+          message: `Failed to upload profile photo successfully!`,
+        }
+      );
     },
   });
 

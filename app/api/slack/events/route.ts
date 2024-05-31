@@ -20,7 +20,7 @@ export async function POST(req: Request) {
             if (!event.subtype) {
               const { channel, channel_type } = event;
               axios
-                .get(`${absolutePathUrl()}/api/automate`, {
+                .get(`https://synapsse.vercel.app/api/automate`, {
                   params: {
                     channelId: channel,
                     channelType: channel_type,
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
                * files: { created, name, is_public, file_access = "visible" }
                */
               axios
-                .get(`${absolutePathUrl()}/api/automate`, {
+                .get(`https://synapsse.vercel.app/api/automate`, {
                   params: {
                     channelId: channel,
                     channelType: channel_type,
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
               item: { channel },
             } = event;
             axios
-              .get(`${absolutePathUrl()}/api/automate`, {
+              .get(`https://synapsse.vercel.app/api/automate`, {
                 params: {
                   channelId: channel,
                   eventType: "2",
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
               channel: { id, is_channel },
             } = event;
             axios
-              .get(`${absolutePathUrl()}/api/automate`, {
+              .get(`https://synapsse.vercel.app/api/automate`, {
                 params: {
                   channelId: id,
                   isChannel: is_channel,

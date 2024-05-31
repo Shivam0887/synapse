@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     if (subscriptionPlan.isSubscribed && dbUser.stripeCustomerId) {
       const stripeSession = await stripe.billingPortal.sessions.create({
         customer: dbUser.stripeCustomerId,
-        return_url: `${absolutePathUrl()}/billing`,
+        return_url: `https://synapsse.vercel.app/billing`,
       });
 
       return NextResponse.json({ url: stripeSession.url }, { status: 200 });
@@ -72,8 +72,8 @@ export async function POST(req: NextRequest) {
         mode: "subscription",
         payment_method_types: ["card", "link"],
         currency: "usd",
-        success_url: `${absolutePathUrl()}/billing`,
-        cancel_url: `${absolutePathUrl()}/billing`,
+        success_url: `https://synapsse.vercel.app/billing`,
+        cancel_url: `https://synapsse.vercel.app/billing`,
       });
       return NextResponse.json({ url: session.url }, { status: 200 });
     }

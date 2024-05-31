@@ -129,11 +129,14 @@ export const onSaveTrigger = async (
         );
       }
 
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: true,
-        action: "Trigger Save",
-        message: `${nodeType} Trigger saved successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: true,
+          action: "Trigger Save",
+          message: `${nodeType} Trigger saved successfully!`,
+        }
+      );
 
       return JSON.stringify({
         success: true,
@@ -141,11 +144,14 @@ export const onSaveTrigger = async (
       });
     }
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Trigger Save",
-      message: "Trigger not saved due to internal errors",
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Trigger Save",
+        message: "Trigger not saved due to internal errors",
+      }
+    );
 
     return JSON.stringify({
       success: false,
@@ -153,11 +159,14 @@ export const onSaveTrigger = async (
     });
   } catch (error: any) {
     console.log(error?.message);
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Trigger Save",
-      message: "Trigger not saved due to internal errors",
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Trigger Save",
+        message: "Trigger not saved due to internal errors",
+      }
+    );
     return JSON.stringify({ success: false, error: error?.message });
   }
 };
@@ -201,11 +210,14 @@ export const onSaveAction = async ({
         }
       );
 
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${_user?.id}`, {
-        status: true,
-        action: "Action Save",
-        message: `${nodeType} Action saved successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${_user?.id}`,
+        {
+          status: true,
+          action: "Action Save",
+          message: `${nodeType} Action saved successfully!`,
+        }
+      );
 
       return JSON.stringify({
         success: true,
@@ -213,11 +225,14 @@ export const onSaveAction = async ({
       });
     }
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${_user?.id}`, {
-      status: false,
-      action: "Action Save",
-      message: "Action not saved due to internal errors",
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${_user?.id}`,
+      {
+        status: false,
+        action: "Action Save",
+        message: "Action not saved due to internal errors",
+      }
+    );
 
     return JSON.stringify({
       success: false,
@@ -265,22 +280,28 @@ export const onSaveNotionAction = async ({
         }
       );
 
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: true,
-        action: "Action Save",
-        message: `Notion Action saved successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: true,
+          action: "Action Save",
+          message: `Notion Action saved successfully!`,
+        }
+      );
 
       return JSON.stringify({
         success: true,
         data: "action saved successfully!",
       });
     } else {
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: false,
-        action: "Action Save",
-        message: "Action not saved due to internal errors",
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: false,
+          action: "Action Save",
+          message: "Action not saved due to internal errors",
+        }
+      );
 
       return JSON.stringify({
         success: false,
@@ -337,7 +358,7 @@ export const addConnection = async ({
 
         if (!target) {
           await axios.patch(
-            `${absolutePathUrl()}/api/logs?userId=${user?.id}`,
+            `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
             {
               status: false,
               action: "Edge Connection",
@@ -354,7 +375,7 @@ export const addConnection = async ({
           const isGoogleDriveConnected = await getDriveInfo();
           if (!isGoogleDriveConnected) {
             await axios.patch(
-              `${absolutePathUrl()}/api/logs?userId=${user?.id}`,
+              `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
               {
                 status: false,
                 action: "Edge Connection",
@@ -391,7 +412,7 @@ export const addConnection = async ({
 
           if (!source) {
             await axios.patch(
-              `${absolutePathUrl()}/api/logs?userId=${user?.id}`,
+              `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
               {
                 status: false,
                 action: "Edge Connection",

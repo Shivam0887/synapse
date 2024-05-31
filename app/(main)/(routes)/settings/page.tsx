@@ -20,7 +20,7 @@ const SettingsPage = async () => {
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { localImageUrl: "" } });
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+    await axios.patch(`https://synapsse.vercel.app/api/logs?userId=${user?.id}`, {
       status: true,
       action: "User Info",
       message: `Profile photo removed successfully!`,
@@ -34,7 +34,7 @@ const SettingsPage = async () => {
     ConnectToDB();
     await User.findByIdAndUpdate(dbUser?._id, { $set: { name } });
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
+    await axios.patch(`https://synapsse.vercel.app/api/logs?userId=${user?.id}`, {
       status: true,
       action: "User Info",
       message: `Username changed successfully!`,

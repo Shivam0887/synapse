@@ -4,7 +4,12 @@ import { absolutePathUrl } from "@/lib/utils";
 import { NextRequest, NextResponse } from "next/server";
 
 import ConnectToDB from "@/lib/connectToDB";
-import { ConnectionTypes, EventData, ResultDataType, ResultType } from "@/lib/types";
+import {
+  ConnectionTypes,
+  EventData,
+  ResultDataType,
+  ResultType,
+} from "@/lib/types";
 
 import { User, UserType } from "@/models/user-model";
 import { Slack, SlackType } from "@/models/slack-model";
@@ -15,7 +20,12 @@ import { Workflow, WorkflowType } from "@/models/workflow-model";
 import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
 import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
 
-import { ChannelCreatedEvent, KnownEventFromType, MemberJoinedChannelEvent, ReactionAddedEvent } from "@slack/bolt";
+import {
+  ChannelCreatedEvent,
+  KnownEventFromType,
+  MemberJoinedChannelEvent,
+  ReactionAddedEvent,
+} from "@slack/bolt";
 
 import { SocketModeClient } from "@slack/socket-mode";
 import DiscordClient from "@/lib/discord-bot";
@@ -60,7 +70,8 @@ async function dfs(
 ) {
   if (triggerType === "Notion" || triggerType === "None") return;
   if (nodeType === "Discord" || nodeType === "Slack" || nodeType === "Notion") {
-    const Model = nodeType === "Discord" ? Discord : nodeType === "Slack" ? Slack : Notion;
+    const Model =
+      nodeType === "Discord" ? Discord : nodeType === "Slack" ? Slack : Notion;
 
     const collection = await Model.findById<ConnectionType>(_id, {
       _id: 0,
@@ -164,13 +175,13 @@ const onMessageSend = async ({
   nodeId,
   workflowId,
   accessToken,
-  _id
+  _id,
 }: ResultDataType & { _id: string }) => {
   ConnectToDB();
 
   const dbUser = await User.findById(_id, {
     credits: 1,
-    tier: 1
+    tier: 1,
   });
 
   if (dbUser && dbUser.tier !== "Premium Plan") {
@@ -191,35 +202,35 @@ const onMessageSend = async ({
     if (nodeType === "Discord") {
       if (action.trigger === "1") {
         const channelResponse = await axios.post(
-          'https://discord.com/api/v10/users/@me/channels',
+          "https://discord.com/api/v10/users/@me/channels",
           {
             recipient_id: action.user!,
           },
           {
             headers: {
               Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
-              'Content-Type': 'application/json',
+              "Content-Type": "application/json",
             },
           }
         );
-    
+
         const channelId = channelResponse.data?.id;
-    
-        if(channelId){
-           // Step 2: Send a message to the DM channel
-        await axios.post(
-          `https://discord.com/api/v10/channels/${channelId}/messages`,
-          {
-            content: action.message!,
-          },
-          {
-            headers: {
-              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
-              'Content-Type': 'application/json',
+
+        if (channelId) {
+          // Step 2: Send a message to the DM channel
+          await axios.post(
+            `https://discord.com/api/v10/channels/${channelId}/messages`,
+            {
+              content: action.message!,
             },
-          }
-        );
-        }       
+            {
+              headers: {
+                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+        }
       } else await postContentToWebhook(action.message!, webhookUrl!, nodeType);
     } else {
       if (action.trigger === "1") {
@@ -239,22 +250,29 @@ const onMessageSend = async ({
 
 const hasCredits = async (workflowId: string, _id: string, userId: string) => {
   ConnectToDB();
-  const workflow = await Workflow.findById<Pick<WorkflowType, "publish">>(workflowId, { _id: 0, publish: 1 });
-  const dbUser = await User.findById<Pick<UserType, 'credits' | 'tier'>>(_id, {
+  const workflow = await Workflow.findById<Pick<WorkflowType, "publish">>(
+    workflowId,
+    { _id: 0, publish: 1 }
+  );
+  const dbUser = await User.findById<Pick<UserType, "credits" | "tier">>(_id, {
     credits: 1,
-    tier: 1
+    tier: 1,
   });
 
-  const isLimit = ((workflow && !workflow.publish) || (dbUser && dbUser.tier !== "Premium Plan" && parseInt(dbUser.credits) === 0));
+  const isLimit =
+    (workflow && !workflow.publish) ||
+    (dbUser &&
+      dbUser.tier !== "Premium Plan" &&
+      parseInt(dbUser.credits) === 0);
 
-  if(isLimit){
+  if (isLimit) {
     await Workflow.findByIdAndUpdate(workflowId, {
       $set: {
-        publish: false
-      }
+        publish: false,
+      },
     });
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${userId}`, {
+    await axios.patch(`https://synapsse.vercel.app/api/logs?userId=${userId}`, {
       status: false,
       action: "Limit Exceeds",
       message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
@@ -262,18 +280,20 @@ const hasCredits = async (workflowId: string, _id: string, userId: string) => {
   }
 
   return isLimit;
-}
+};
 
 export async function POST(req: NextRequest) {
   try {
-    const { publish, workflowId, _id, clerkUserId } = reqSchema.parse(await req.json());
+    const { publish, workflowId, _id, clerkUserId } = reqSchema.parse(
+      await req.json()
+    );
 
     const result: ResultType = {
       Discord: [],
       Slack: [],
       "Google Drive": [],
     };
-    
+
     ConnectToDB();
 
     const dbUser = await User.findById(_id, {
@@ -283,192 +303,298 @@ export async function POST(req: NextRequest) {
     if (dbUser) {
       const WorkflowToDrive = dbUser.WorkflowToDrive;
 
-      const workflow = await Workflow.findById<Pick<WorkflowType, "_id" | "parentId" | "parentTrigger" | "googleDriveWatchTrigger">>(
-        workflowId, 
-        {
-          parentTrigger: 1,
-          parentId: 1,
-          googleDriveWatchTrigger: 1,
-        }
-      );
+      const workflow = await Workflow.findById<
+        Pick<
+          WorkflowType,
+          "_id" | "parentId" | "parentTrigger" | "googleDriveWatchTrigger"
+        >
+      >(workflowId, {
+        parentTrigger: 1,
+        parentId: 1,
+        googleDriveWatchTrigger: 1,
+      });
 
       if (workflow?.parentTrigger && publish) {
-        if (workflow.parentTrigger === "Google Drive" && workflow.googleDriveWatchTrigger?.connections) {
-          const { discordId, notionId, slackId } = workflow.googleDriveWatchTrigger.connections;
+        if (
+          workflow.parentTrigger === "Google Drive" &&
+          workflow.googleDriveWatchTrigger?.connections
+        ) {
+          const { discordId, notionId, slackId } =
+            workflow.googleDriveWatchTrigger.connections;
 
           await Promise.all(
             discordId.map(async ({ _id }) => {
-              await dfs(_id.toString(), "Discord", workflow.parentTrigger, true, result);
+              await dfs(
+                _id.toString(),
+                "Discord",
+                workflow.parentTrigger,
+                true,
+                result
+              );
             })
           );
 
           await Promise.all(
             slackId.map(async ({ _id }) => {
-              await dfs(_id.toString(), "Slack", workflow.parentTrigger, true, result);
+              await dfs(
+                _id.toString(),
+                "Slack",
+                workflow.parentTrigger,
+                true,
+                result
+              );
             })
           );
 
           await Promise.all(
             notionId.map(async ({ _id }) => {
-              await dfs(_id.toString(), "Notion", workflow.parentTrigger, true, result);
+              await dfs(
+                _id.toString(),
+                "Notion",
+                workflow.parentTrigger,
+                true,
+                result
+              );
             })
           );
 
           WorkflowToDrive.set(workflowId, result["Google Drive"]);
           await dbUser.save();
 
-          await axios.get(`${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`);
-        } 
-        else if (workflow.parentId && (workflow.parentTrigger === "Discord" || workflow.parentTrigger === "Slack")) {
+          await axios.get(
+            `https://synapsse.vercel.app/api/drive/watch?workflowId=${workflowId}&userId=${clerkUserId}`
+          );
+        } else if (
+          workflow.parentId &&
+          (workflow.parentTrigger === "Discord" ||
+            workflow.parentTrigger === "Slack")
+        ) {
           const Model = workflow.parentTrigger === "Discord" ? Discord : Slack;
           const collection = await Model.findById(workflow.parentId);
 
-          if (workflow.parentTrigger === "Discord" && collection.channelId && collection.guildId && collection.trigger) {
-            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false, result);
+          if (
+            workflow.parentTrigger === "Discord" &&
+            collection.channelId &&
+            collection.guildId &&
+            collection.trigger
+          ) {
+            await dfs(
+              collection._id,
+              workflow.parentTrigger,
+              workflow.parentTrigger,
+              false,
+              result
+            );
 
             discordClient.connect();
 
-            if (collection.trigger === "0" || collection.trigger === "1"){
-              async function onDiscordMessageCreate (message: EventData["MESSAGE_CREATE"]) {
+            if (collection.trigger === "0" || collection.trigger === "1") {
+              async function onDiscordMessageCreate(
+                message: EventData["MESSAGE_CREATE"]
+              ) {
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   discordClient.off("messageCreate", onDiscordMessageCreate);
                   discordClient.disconnect();
-                }
-                else if(!message.webhook_id){
-                  if (!message.author.bot && collection.channelId === message.channel_id) {
+                } else if (!message.webhook_id) {
+                  if (
+                    !message.author.bot &&
+                    collection.channelId === message.channel_id
+                  ) {
                     result["Discord"].forEach((data) => {
-                      if (!(!!message.mentions.length || !!message.mention_roles.length))
+                      if (
+                        !(
+                          !!message.mentions.length ||
+                          !!message.mention_roles.length
+                        )
+                      )
                         onMessageSend({ ...data, _id });
                     });
-                
+
                     result["Discord"].forEach((data) => {
-                      if (!!message.mentions.length || !!message.mention_roles.length)
-                        onMessageSend({ ...data, _id});
+                      if (
+                        !!message.mentions.length ||
+                        !!message.mention_roles.length
+                      )
+                        onMessageSend({ ...data, _id });
                     });
                   }
                 }
               }
 
               discordClient.on("messageCreate", onDiscordMessageCreate);
-            }
-            else if (collection.trigger === "2"){
-              async function onDiscordReactionAdd (reaction: EventData["MESSAGE_REACTION_ADD"]) {
+            } else if (collection.trigger === "2") {
+              async function onDiscordReactionAdd(
+                reaction: EventData["MESSAGE_REACTION_ADD"]
+              ) {
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   discordClient.off("messageReactionAdd", onDiscordReactionAdd);
                   discordClient.disconnect();
-                }
-                else if (collection.channelId === reaction.channel_id) {
-                  result["Discord"].forEach((data) => onMessageSend({ ...data, _id}));
+                } else if (collection.channelId === reaction.channel_id) {
+                  result["Discord"].forEach((data) =>
+                    onMessageSend({ ...data, _id })
+                  );
                 }
               }
 
               discordClient.on("messageReactionAdd", onDiscordReactionAdd);
-            }
-            else if (collection.trigger === "3"){
-              async function onDiscordMemberJoin (member: EventData["GUILD_MEMBER_ADD"]){
+            } else if (collection.trigger === "3") {
+              async function onDiscordMemberJoin(
+                member: EventData["GUILD_MEMBER_ADD"]
+              ) {
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   discordClient.off("guildMemberAdd", onDiscordMemberJoin);
                   discordClient.disconnect();
-                }
-                else if (collection.guildId === member.guild_id) {
-                  result["Discord"].forEach((data) => onMessageSend({ ...data, _id}));
+                } else if (collection.guildId === member.guild_id) {
+                  result["Discord"].forEach((data) =>
+                    onMessageSend({ ...data, _id })
+                  );
                 }
               }
 
               discordClient.on("guildMemberAdd", onDiscordMemberJoin);
             }
-          }
-          else if (workflow.parentTrigger === "Slack" && collection.channelId && collection.teamId && collection.trigger) {
-            await dfs(collection._id, workflow.parentTrigger, workflow.parentTrigger, false, result);
+          } else if (
+            workflow.parentTrigger === "Slack" &&
+            collection.channelId &&
+            collection.teamId &&
+            collection.trigger
+          ) {
+            await dfs(
+              collection._id,
+              workflow.parentTrigger,
+              workflow.parentTrigger,
+              false,
+              result
+            );
 
             await SlackClient.start();
 
-            if(collection.trigger === "0" || collection.trigger === "1"){
-              async function onSlackMessageCreate({ event, ack }: { event: KnownEventFromType<"message">, ack: any } ){
-                if(ack) await ack();
+            if (collection.trigger === "0" || collection.trigger === "1") {
+              async function onSlackMessageCreate({
+                event,
+                ack,
+              }: {
+                event: KnownEventFromType<"message">;
+                ack: any;
+              }) {
+                if (ack) await ack();
 
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   SlackClient.off("message", onSlackMessageCreate);
-                }
-                else if(event && collection.channelId === event?.channel && event?.channel_type === "channel"){
-                  if(event.subtype === "file_share"){
+                } else if (
+                  event &&
+                  collection.channelId === event?.channel &&
+                  event?.channel_type === "channel"
+                ) {
+                  if (event.subtype === "file_share") {
                     result["Slack"].forEach((data) => {
                       let updatedAction = data.action;
-                      if((data.nodeType === "Discord" || data.nodeType === "Slack") && event.files && event.files.length > 0) {
+                      if (
+                        (data.nodeType === "Discord" ||
+                          data.nodeType === "Slack") &&
+                        event.files &&
+                        event.files.length > 0
+                      ) {
                         updatedAction = {
                           ...data.action,
-                          message: `${data.action!.message} having name ${event.files[0].name}`
-                        }
+                          message: `${data.action!.message} having name ${
+                            event.files[0].name
+                          }`,
+                        };
                       }
-              
+
                       onMessageSend({ ...data, action: updatedAction, _id });
-                    })
-                  } else if(!event.subtype){
+                    });
+                  } else if (!event.subtype) {
                     result["Slack"].forEach((data) => {
-                      onMessageSend({ ...data, _id});
+                      onMessageSend({ ...data, _id });
                     });
                   }
                 }
-              };
+              }
 
               SlackClient.on("message", onSlackMessageCreate);
-            }
-            else if(collection.trigger === "2"){
-              async function onSlackReactionAdd ({ event, ack }: { event: ReactionAddedEvent, ack: any }) {
-                if(ack) await ack();
+            } else if (collection.trigger === "2") {
+              async function onSlackReactionAdd({
+                event,
+                ack,
+              }: {
+                event: ReactionAddedEvent;
+                ack: any;
+              }) {
+                if (ack) await ack();
 
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   SlackClient.off("reaction_added", onSlackReactionAdd);
-                }
-                else if(event && collection.channelId === event?.item.channel){
+                } else if (
+                  event &&
+                  collection.channelId === event?.item.channel
+                ) {
                   result["Slack"].forEach((data) => {
-                    onMessageSend({ ...data, _id});
+                    onMessageSend({ ...data, _id });
                   });
                 }
               }
 
               SlackClient.on("reaction_added", onSlackReactionAdd);
-            }
-            else if(collection.trigger === "3"){
-              async function onSlackChannelCreate ({ event, ack }: { event: ChannelCreatedEvent, ack: any }) {
-                if(ack) await ack();
+            } else if (collection.trigger === "3") {
+              async function onSlackChannelCreate({
+                event,
+                ack,
+              }: {
+                event: ChannelCreatedEvent;
+                ack: any;
+              }) {
+                if (ack) await ack();
 
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   SlackClient.off("channel_created", onSlackChannelCreate);
-                }
-                else if(event && collection.channelId === event?.channel.id && event?.channel.is_channel){
+                } else if (
+                  event &&
+                  collection.channelId === event?.channel.id &&
+                  event?.channel.is_channel
+                ) {
                   result["Slack"].forEach((data) => {
-                    onMessageSend({ ...data, _id});
+                    onMessageSend({ ...data, _id });
                   });
                 }
               }
 
               SlackClient.on("channel_created", onSlackChannelCreate);
-            }
-            else if(collection.trigger === "4"){
-              async function onSlackMemberJoin ({ event, ack }: { event: MemberJoinedChannelEvent, ack: any }) {
-                if(ack) await ack();
+            } else if (collection.trigger === "4") {
+              async function onSlackMemberJoin({
+                event,
+                ack,
+              }: {
+                event: MemberJoinedChannelEvent;
+                ack: any;
+              }) {
+                if (ack) await ack();
 
                 const isLimit = await hasCredits(workflowId, _id, clerkUserId);
 
-                if(isLimit){
+                if (isLimit) {
                   SlackClient.off("member_joined_channel", onSlackMemberJoin);
-                }
-                else if(event && collection.channelId === event?.channel && event?.channel_type === "channel" && event.team === collection.teamId){
+                } else if (
+                  event &&
+                  collection.channelId === event?.channel &&
+                  event?.channel_type === "channel" &&
+                  event.team === collection.teamId
+                ) {
                   result["Slack"].forEach((data) => {
-                    onMessageSend({ ...data, _id});
+                    onMessageSend({ ...data, _id });
                   });
                 }
               }

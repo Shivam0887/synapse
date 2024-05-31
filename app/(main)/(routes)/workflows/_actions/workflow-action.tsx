@@ -51,14 +51,17 @@ export const createWorkflow = async ({
         : workflowLimit[plan] === dbUser.workflowId.length;
 
     if (isLimit) {
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: false,
-        action: "Workflow create",
-        message:
-          plan === "Free Plan"
-            ? "Limit reached! Please upgrade to Pro/Premium Plan"
-            : "Limit reached! Please upgrade to Premium Plan",
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: false,
+          action: "Workflow create",
+          message:
+            plan === "Free Plan"
+              ? "Limit reached! Please upgrade to Pro/Premium Plan"
+              : "Limit reached! Please upgrade to Premium Plan",
+        }
+      );
 
       return {
         success: false,
@@ -81,11 +84,14 @@ export const createWorkflow = async ({
       },
     });
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: true,
-      action: "Workflow create",
-      message: `Workflow Id: ${workflow?._id}, Workflow created successfully!`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: true,
+        action: "Workflow create",
+        message: `Workflow Id: ${workflow?._id}, Workflow created successfully!`,
+      }
+    );
 
     revalidatePath("/workflows");
 
@@ -96,11 +102,14 @@ export const createWorkflow = async ({
     };
   } catch (error: any) {
     console.log(error?.message);
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Workflow create",
-      message: `Failed to create the ${name} workflow.`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Workflow create",
+        message: `Failed to create the ${name} workflow.`,
+      }
+    );
 
     return { success: false, message: "Failed to create workflow." };
   }
@@ -143,20 +152,26 @@ export const onWorkflowSave = async ({
       );
     }
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: true,
-      action: "Workflow save",
-      message: `Workflow Id: ${workflowId}, Workflow updated successfully!`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: true,
+        action: "Workflow save",
+        message: `Workflow Id: ${workflowId}, Workflow updated successfully!`,
+      }
+    );
 
     return "Workflow updated successfully!";
   } catch (error: any) {
     console.log(error?.message);
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Workflow save",
-      message: `"Failed to update the workflow with Id: ${workflowId}`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Workflow save",
+        message: `"Failed to update the workflow with Id: ${workflowId}`,
+      }
+    );
 
     return "Failed to update the workflow.";
   }
@@ -236,14 +251,17 @@ export const onPublishWorkflow = async ({
         : publishLimit[plan] === publishCount[0].count;
 
     if (isLimit) {
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: false,
-        action: "Workflow publish",
-        message:
-          plan === "Free Plan"
-            ? "Limit reached! Please upgrade to Pro/Premium Plan"
-            : "Limit reached! Please upgrade to Premium Plan",
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: false,
+          action: "Workflow publish",
+          message:
+            plan === "Free Plan"
+              ? "Limit reached! Please upgrade to Pro/Premium Plan"
+              : "Limit reached! Please upgrade to Premium Plan",
+        }
+      );
 
       return JSON.stringify({
         success: false,
@@ -335,7 +353,7 @@ export const onPublishWorkflow = async ({
         });
 
       if (publish) {
-        await axios.post(`${absolutePathUrl()}/api/automate`, {
+        await axios.post(`https://synapsse.vercel.app/api/automate`, {
           publish,
           workflowId,
           _id: dbUser?._id.toString(),
@@ -358,9 +376,7 @@ export const onPublishWorkflow = async ({
           await dbUser.save();
 
           await axios.get(
-            `${absolutePathUrl()}/api/drive/watch?workflowId=${workflowId}&userId=${
-              user?.id
-            }`
+            `https://synapsse.vercel.app/api/drive/watch?workflowId=${workflowId}&userId=${user?.id}`
           );
         }
       }
@@ -374,13 +390,16 @@ export const onPublishWorkflow = async ({
         }
       );
 
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: true,
-        action: "Workflow publish",
-        message: publish
-          ? `Workflow Id: ${workflowId}, Workflow published successfully!`
-          : `Workflow Id: ${workflowId}, Workflow unpublished successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: true,
+          action: "Workflow publish",
+          message: publish
+            ? `Workflow Id: ${workflowId}, Workflow published successfully!`
+            : `Workflow Id: ${workflowId}, Workflow unpublished successfully!`,
+        }
+      );
 
       revalidatePath(`/workflows/editor/${workflowId}`);
     }
@@ -393,11 +412,14 @@ export const onPublishWorkflow = async ({
     });
   } catch (error: any) {
     console.log(error?.message);
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Workflow publish",
-      message: `Failed to publish the workflow with Id: ${workflowId}`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Workflow publish",
+        message: `Failed to publish the workflow with Id: ${workflowId}`,
+      }
+    );
 
     return JSON.stringify({
       success: false,
@@ -644,11 +666,14 @@ export const deleteNode = async (
         }
       }
 
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: true,
-        action: "Workflow node delete",
-        message: `Workflow Id: ${workflowId}, ${nodeType} node deleted successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: true,
+          action: "Workflow node delete",
+          message: `Workflow Id: ${workflowId}, ${nodeType} node deleted successfully!`,
+        }
+      );
 
       return JSON.stringify({
         success: true,
@@ -657,11 +682,14 @@ export const deleteNode = async (
       });
     }
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Workflow node delete",
-      message: `Workflow Id: ${workflowId}, ${nodeType} node not able to delete due to internal errors`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Workflow node delete",
+        message: `Workflow Id: ${workflowId}, ${nodeType} node not able to delete due to internal errors`,
+      }
+    );
 
     return JSON.stringify({
       success: false,
@@ -670,11 +698,14 @@ export const deleteNode = async (
   } catch (error: any) {
     console.log(error?.message);
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Workflow node delete",
-      message: `Workflow Id: ${workflowId}, ${nodeType} node not able to delete due to internal errors`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Workflow node delete",
+        message: `Workflow Id: ${workflowId}, ${nodeType} node not able to delete due to internal errors`,
+      }
+    );
     return JSON.stringify({ success: false, error: error?.message });
   }
 };
@@ -766,11 +797,14 @@ export const changeTrigger = async (
         }
       }
 
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: true,
-        action: "Workflow Trigger change",
-        message: `Workflow Id: ${workflowId}, trigger changed to ${nodeType} successfully!`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: true,
+          action: "Workflow Trigger change",
+          message: `Workflow Id: ${workflowId}, trigger changed to ${nodeType} successfully!`,
+        }
+      );
 
       return JSON.stringify({ type: "None", id: "" });
     }
@@ -802,19 +836,25 @@ export const deleteWorkflow = async (workflowId: string) => {
   try {
     const workflow = await Workflow.findById(workflowId);
     if (!workflow) {
-      await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-        status: false,
-        action: "Workflow delete",
-        message: `Workflow Id: ${workflowId}, Workflow not found.`,
-      });
+      await axios.patch(
+        `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+        {
+          status: false,
+          action: "Workflow delete",
+          message: `Workflow Id: ${workflowId}, Workflow not found.`,
+        }
+      );
       return JSON.stringify({ success: false, error: "Workflow not found." });
     }
 
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: true,
-      action: "Workflow delete",
-      message: `Workflow Id: ${workflowId}, Workflow deleted successfully!`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: true,
+        action: "Workflow delete",
+        message: `Workflow Id: ${workflowId}, Workflow deleted successfully!`,
+      }
+    );
 
     await User.findByIdAndUpdate(workflow.userId, {
       $pull: {
@@ -829,11 +869,14 @@ export const deleteWorkflow = async (workflowId: string) => {
     });
   } catch (error: any) {
     console.log(error?.message);
-    await axios.patch(`${absolutePathUrl()}/api/logs?userId=${user?.id}`, {
-      status: false,
-      action: "Workflow delete",
-      message: `Workflow Id: ${workflowId}, not able to delete due to some internal errors.`,
-    });
+    await axios.patch(
+      `https://synapsse.vercel.app/api/logs?userId=${user?.id}`,
+      {
+        status: false,
+        action: "Workflow delete",
+        message: `Workflow Id: ${workflowId}, not able to delete due to some internal errors.`,
+      }
+    );
     return JSON.stringify({ success: false, error: "Interval server error" });
   }
 };
