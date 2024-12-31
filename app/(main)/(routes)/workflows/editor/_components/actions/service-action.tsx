@@ -1,18 +1,29 @@
-import { Card, CardContent } from "@/components/ui/card";
-import { useEditor } from "@/providers/editor-provider";
-import React, { useEffect, useState } from "react";
-import { getTrigger } from "../../../../connections/_actions/connection-action";
-import { ActionDataType, ConnectionTypes } from "@/lib/types";
-import { toast } from "sonner";
-import { CONNECTIONS } from "@/lib/constant";
-import { z } from "zod";
-import ActionForm from "@/components/forms/action-form";
+"use client";
+
 import axios from "axios";
-import NotionAction from "./notion-action";
+import { toast } from "sonner";
+import { z, ZodError } from "zod";
 import { Ghost } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { CONNECTIONS } from "@/lib/constants";
+import { ActionDataType, CustomNodeType } from "@/lib/types";
+import { isConnectionType, isValidTrigger } from "@/lib/utils";
+
+import { useEditor } from "@/providers/editor-provider";
+import { getTrigger } from "@/actions/connection.actions";
+
+import ActionForm from "@/components/forms/action-form";
+import { Card, CardContent } from "@/components/ui/card";
+import WorkflowLoading from "@/components/workflow-loading";
+import NotionActionForm from "@/components/forms/notion-action-form";
 
 type ServiceActionProps = {
   workflowId: string;
+  parentTrigger: {
+    type: Exclude<CustomNodeType, "AI" | "Notion">;
+    id: string;
+  };
 };
 
 const responseSchema = z.array(
@@ -22,143 +33,146 @@ const responseSchema = z.array(
   })
 );
 
-const ServiceAction = ({ workflowId }: ServiceActionProps) => {
-  const { selectedNode, edges, nodes } = useEditor().state.editor;
+const ServiceAction = ({ workflowId, parentTrigger }: ServiceActionProps) => {
+  const { selectedNode, edges, nodes } = useEditor().editorState.editor;
   const [loading, setLoading] = useState(false);
   const [usersLoaded, setUsersLoaded] = useState(false);
   const [defaultMessage, setDefaultMessage] = useState("");
   const [users, setUsers] = useState<{ id: string; username: string }[]>([]);
 
   const [actionData, setActionData] = useState<ActionDataType>({
-    trigger: undefined,
+    trigger: "0",
     message: "",
-    type: "default",
+    mode: "default",
     user: "",
   });
 
   // loading the channel members
   useEffect(() => {
-    if (selectedNode.type === "Discord" || selectedNode.type === "Slack") {
-      (async () => {
+    (async () => {
+      if (selectedNode.type === "Discord" || selectedNode.type === "Slack") {
         setUsersLoaded(true);
         const url =
           selectedNode.type === "Discord" ? "/api/discord" : "/api/slack";
+
         try {
           const response = await axios.post(url, {
             workflowId,
             nodeId: selectedNode.id,
           });
-          if (response) {
-            const result = responseSchema.safeParse(response.data.users);
-            if (result.success) {
-              setUsers(result.data);
-            } else toast.error(result.error.message);
+
+          if (response.status === 200) {
+            const users = responseSchema.parse(response.data.users);
+            setUsers(users);
           }
-        } catch (error: any) {
-          console.log(error?.message);
+        } catch (error) {
+          if (error instanceof Error || error instanceof ZodError)
+            toast.error(error.message);
         }
         setUsersLoaded(false);
-      })();
-    }
+      }
+    })();
   }, [selectedNode.id, selectedNode.type, workflowId]);
 
   useEffect(() => {
-    if (
-      selectedNode.type === "Discord" ||
-      selectedNode.type === "Slack" ||
-      selectedNode.type === "Google Drive"
-    ) {
-      (async () => {
+    (async () => {
+      if (
+        isConnectionType(selectedNode.type) &&
+        selectedNode.type !== "Google Drive"
+      ) {
         // finding an edge between the source and the target(selectedNode) node
         const edge = edges.find(({ target }) => target === selectedNode.id);
 
         // finding the type of the source node
-        const sourceNodeType = nodes.find((node) => node.id === edge?.source);
+        const sourceNodeType = nodes.find(
+          (node) => node.id === edge?.source
+        )?.type;
 
         setLoading(true);
-        if (
-          (
-          edge &&
-          sourceNodeType &&
-          sourceNodeType?.type === "Discord" || sourceNodeType?.type === "Slack")
-        ) {
-          const triggerResponse = await getTrigger(
-            workflowId,
-            edge!.source,
-            sourceNodeType.type as ConnectionTypes
-          );
 
-          if (triggerResponse) {
-            const { success, data, message, error } =
-              JSON.parse(triggerResponse);
-            if (success) {
-              const nodeType = data.nodeType as ConnectionTypes;
-              if (nodeType === "Discord" || nodeType === "Slack") {
-                const node = CONNECTIONS[nodeType].message!;
-                const message = node[data.trigger];
-                setDefaultMessage(message);
-              }
-            } else {
-              if (message) toast.message(message);
-              else toast.error(error);
+        if (isValidTrigger(sourceNodeType)) {
+          if (sourceNodeType === "Google Drive")
+            setDefaultMessage("A change occur in your Google Drive: ");
+          else {
+            const response = await getTrigger(edge!.source, sourceNodeType);
+
+            if (!response.success) {
+              toast.error(response.error);
+              return;
             }
-          }
-        } else if (sourceNodeType?.type === "Google Drive")
-          setDefaultMessage("A change occur in your Google Drive: ");
 
-        const actionResponse = await getTrigger(
-          workflowId,
-          selectedNode.id,
-          selectedNode.type as ConnectionTypes
-        );
+            const data = response.data;
+            const nodeType = data.nodeType;
 
-        if (actionResponse) {
-          const { success, data, message, error } = JSON.parse(actionResponse);
-          if (success) {
-            setActionData({
-              trigger: data.action.trigger,
-              type: data.action.mode,
-              message: data.action.message,
-              user: data.action.user,
-            });
-          } else {
-            if (message) toast.message(message);
-            else toast.error(error);
+            if (nodeType === "Discord" || nodeType === "Slack") {
+              const node = CONNECTIONS[nodeType].message!;
+              const message = node[data.trigger];
+              setDefaultMessage(message);
+            }
           }
         }
 
+        const response = await getTrigger(selectedNode.id, selectedNode.type);
+
+        if (!response.success) {
+          toast.error(response.error);
+          return;
+        }
+
+        const data = response.data;
+
+        setActionData({
+          trigger: data.action?.trigger ?? "0",
+          mode: data.action?.mode ?? "default",
+          message: data.action?.message ?? "",
+          user: "",
+        });
+
         setLoading(false);
-      })();
-    }
+      }
+    })();
   }, [selectedNode.type, workflowId, selectedNode.id, edges, nodes]);
 
   return (
     <Card>
       <CardContent className="p-4">
-        {selectedNode.type === "Google Drive" && (
-          <div className="flex flex-col items-center gap-2">
-            <Ghost />
-            <p className="text-center font-medium">Not available</p>
-          </div>
-        )}
-        {(selectedNode.type === "Slack" || selectedNode.type === "Discord") && (
-          <ActionForm
-            actionData={actionData}
-            defaultMessage={
-              defaultMessage
-                ? defaultMessage
-                : "Must have a trigger node for default message"
-            }
-            loading={loading && usersLoaded}
-            setActionData={setActionData}
-            nodeId={selectedNode.id}
-            workflowId={workflowId}
-            users={users}
-          />
-        )}
-        {selectedNode.type === "Notion" && (
-          <NotionAction workflowId={workflowId} isTesting={false} />
-        )}
+        <div className="relative">
+          {selectedNode.type === "Google Drive" && (
+            <div className="flex flex-col items-center gap-2">
+              <Ghost />
+              <p className="text-center font-medium">Not available</p>
+            </div>
+          )}
+          {loading && usersLoaded ? (
+            <WorkflowLoading />
+          ) : (
+            <>
+              {(selectedNode.type === "Slack" ||
+                selectedNode.type === "Discord") && (
+                <ActionForm
+                  parentTrigger={parentTrigger}
+                  actionData={actionData}
+                  defaultMessage={
+                    defaultMessage
+                      ? defaultMessage
+                      : "For default message, set trigger to a valid node."
+                  }
+                  setActionData={setActionData}
+                  nodeId={selectedNode.id}
+                  workflowId={workflowId}
+                  users={users}
+                />
+              )}
+              {selectedNode.type === "Notion" && (
+                <NotionActionForm
+                  workflowId={workflowId}
+                  isTesting={false}
+                  trigger={actionData.trigger}
+                />
+              )}
+            </>
+          )}
+        </div>
       </CardContent>
     </Card>
   );

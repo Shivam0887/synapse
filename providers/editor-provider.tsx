@@ -1,16 +1,22 @@
 "use client";
 
-import { EditorActions, CustomNodeType } from "@/lib/types";
-import { Dispatch, createContext, useContext, useReducer } from "react";
+import { EditorActions, CustomNode } from "@/lib/types";
+import {
+  Dispatch,
+  createContext,
+  useContext,
+  useMemo,
+  useReducer,
+} from "react";
 
 export type Editor = {
-  nodes: CustomNodeType[];
+  nodes: CustomNode[];
   edges: {
     id: string;
     source: string;
     target: string;
   }[];
-  selectedNode: CustomNodeType;
+  selectedNode: CustomNode;
 };
 
 export type HistoryState = {
@@ -31,9 +37,7 @@ const initialEditorState: Editor = {
       completed: false,
       current: false,
       description: "",
-      metadata: {},
       title: "",
-      type: "None",
     },
     id: "",
     position: { x: 0, y: 0 },
@@ -118,11 +122,11 @@ export type EditorContextData = {
 };
 
 export const EditorContext = createContext<{
-  state: EditorState;
-  dispatch: Dispatch<EditorActions>;
+  editorState: EditorState;
+  editorDispatch: Dispatch<EditorActions>;
 }>({
-  state: initialState,
-  dispatch: () => undefined,
+  editorState: initialState,
+  editorDispatch: () => {},
 });
 
 type EditorProps = {
@@ -130,17 +134,18 @@ type EditorProps = {
 };
 
 const EditorProvider = ({ children }: EditorProps) => {
-  const [state, dispatch] = useReducer(editorReducer, initialState);
+  const [editorState, editorDispatch] = useReducer(editorReducer, initialState);
+
+  const value = useMemo(
+    () => ({
+      editorState,
+      editorDispatch,
+    }),
+    [editorState]
+  );
 
   return (
-    <EditorContext.Provider
-      value={{
-        state,
-        dispatch,
-      }}
-    >
-      {children}
-    </EditorContext.Provider>
+    <EditorContext.Provider value={value}>{children}</EditorContext.Provider>
   );
 };
 

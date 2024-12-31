@@ -1,14 +1,15 @@
-import { Slack, SlackType } from "@/models/slack-model";
-import axios from "axios";
-import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { NextRequest, NextResponse } from "next/server";
+
+import { WebClient } from "@slack/web-api";
+import { Slack, SlackType } from "@/models/slack.model";
+
+const slackClient = new WebClient();
 
 const reqBodySchema = z.object({
   workflowId: z.string(),
   nodeId: z.string(),
 });
-
-const isMemberExists = new Map<string, { id: string; username: string }>();
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,67 +22,43 @@ export async function POST(req: NextRequest) {
     );
 
     if (slackInstance) {
-      const response = await axios.get(
-        "https://slack.com/api/conversations.members",
-        {
-          headers: {
-            Authorization: `Bearer ${slackInstance.accessToken}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          params: {
-            channel: slackInstance.channelId,
-          },
-        }
-      );
+      const response = await slackClient.conversations.members({
+        token: slackInstance.accessToken,
+        channel: slackInstance.channelId,
+      });
 
-      if (response?.data.ok) {
-        const memberIds: string[] = response.data.members;
+      if (response.error) throw new Error(response.error);
+      if (!response.members)
+        return NextResponse.json(
+          { success: false, message: "No member found" },
+          { status: 404 }
+        );
 
-        const users: { id: string; username: string }[] = [];
+      const memberIds = response.members;
 
-        for (const memberId of memberIds) {
-          if (!isMemberExists.has(memberId)) {
-            const userInfo = await axios.get(
-              "https://slack.com/api/users.info",
-              {
-                headers: {
-                  Authorization: `Bearer ${slackInstance.accessToken}`,
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                params: {
-                  user: memberId,
-                },
-              }
-            );
+      const users: { id: string; username: string }[] = [];
 
-            if (userInfo?.data?.ok && !userInfo.data.user.is_bot) {
-              const { user } = userInfo.data;
-              isMemberExists.set(memberId, {
-                id: user.id,
-                username: user.name,
-              });
+      await Promise.all(
+        memberIds.map(async (memberId) => {
+          const userInfo = await slackClient.users.info({
+            token: slackInstance.accessToken,
+            user: memberId,
+          });
 
-              users.push({
-                id: user.id as string,
-                username: user.name as string,
-              });
-            }
-          } else {
+          if (userInfo.user?.id && userInfo.user?.name) {
             users.push({
-              id: isMemberExists.get(memberId)!.id,
-              username: isMemberExists.get(memberId)!.username,
+              id: userInfo.user.id,
+              username: userInfo.user.name,
             });
           }
-        }
+        })
+      );
 
-        return NextResponse.json({ success: true, users }, { status: 200 });
-      } else {
-        throw new Error(response.data.error.message);
-      }
+      return NextResponse.json({ success: true, users }, { status: 200 });
     }
 
     return NextResponse.json(
-      { success: false, message: "not found" },
+      { success: false, message: "Slack channel not found" },
       { status: 404 }
     );
   } catch (error: any) {

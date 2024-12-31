@@ -11,6 +11,7 @@
 *::-webkit-scrollbar {
   display: none !important;
 }
+
 .bg-radial-gradient {
   background-image: radial-gradient(
     circle at 10% 20%,
@@ -77,4 +78,12 @@
 
 .react-flow__attribution {
   visibility: hidden;
+}
+
+.react-flow__controls > button {
+  color: rgb(27, 27, 27);
+}
+
+.react-flow__controls > button:hover {
+  color: rgb(27, 27, 27);
 }

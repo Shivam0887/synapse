@@ -1,9 +1,13 @@
-import { User, UserType } from "@/models/user-model";
+import { User, UserType } from "@/models/user.model";
 import ConnectToDB from "@/lib/connectToDB";
 import { NextRequest, NextResponse } from "next/server";
-import { Workflow } from "@/models/workflow-model";
-import { Slack } from "@/models/slack-model";
-import { absolutePathUrl } from "@/lib/utils";
+import { Workflow } from "@/models/workflow.model";
+import { Slack } from "@/models/slack.model";
+import { absolutePathUrl, oauthRedirectUri } from "@/lib/utils";
+
+const clientId = process.env.SLACK_CLIENT_ID!;
+const clientSecret = process.env.SLACK_CLIENT_SECRET!;
+const redirectUri = oauthRedirectUri + "/slack";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -11,7 +15,7 @@ export async function GET(req: NextRequest) {
   const error = req.nextUrl.searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(`https://synapsse.netlify.app/workflows`);
+    return NextResponse.redirect(`${absolutePathUrl}}/workflows`);
   }
 
   if (!code) {
@@ -23,7 +27,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    ConnectToDB();
+    await ConnectToDB();
     const dbUser = await User.findOne<UserType>({ userId });
 
     const response = await fetch("https://slack.com/api/oauth.v2.access", {
@@ -33,9 +37,9 @@ export async function GET(req: NextRequest) {
       },
       body: new URLSearchParams({
         code,
-        client_id: process.env.SLACK_CLIENT_ID!,
-        client_secret: process.env.SLACK_CLIENT_SECRET!,
-        redirect_uri: process.env.SLACK_REDIRECT_URI!,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri,
       }),
     });
 
@@ -83,10 +87,15 @@ export async function GET(req: NextRequest) {
 
     // Handle the successful OAuth flow and redirect the user
     return NextResponse.redirect(
-      `https://synapsse.netlify.app/workflows/editor/${dbUser?.currentWorkflowId}`
+      `${absolutePathUrl}/workflows/editor/${dbUser?.currentWorkflowId}`
     );
-  } catch (error: any) {
-    console.error(error?.message);
-    return new NextResponse("Internal Server Error", { status: 500 });
+  } catch (error) {
+    if (error instanceof Error)
+      console.log("Failed to connect with Slack:", error.message);
+
+    return new NextResponse(
+      "Internal Server Error. Failed to connect with Slack",
+      { status: 500 }
+    );
   }
 }

@@ -1,33 +1,34 @@
-import Stripe from "stripe";
 import BillingDashboard from "./_components/billing-dashboard";
-import { PLANS } from "@/lib/constant";
-import { getUser } from "../connections/_actions/get-user";
-import { getUserSubscriptionPlan } from "@/lib/utils";
+import { getUserSubscriptionPlan } from "@/actions/utils.actions";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-  typescript: true,
-  apiVersion: "2024-04-10",
-});
-
-type Props = {
+type BillingProps = {
   searchParams: { [key: string]: "Pro" | "Premium" | undefined };
 };
 
-const Billing = async (props: Props) => {
-  const plan = props.searchParams.plan ?? "";
-  let productId = plan === "Premium" || plan === "Pro" ? PLANS[plan] : "";
+const Billing = async ({ searchParams }: BillingProps) => {
+  const plan = searchParams.plan;
+  let productId =
+    plan === "Premium"
+      ? process.env.STRIPE_PREMIUM_PRODUCT_ID!
+      : plan === "Pro"
+      ? process.env.STRIPE_PRO_PRODUCT_ID!
+      : "";
 
-  const { isCanceled, isSubscribed, stripeCurrentPeriodEnd } =
+  const { isCanceled, isSubscribed, stripeCurrentPeriodEnd, tier } =
     await getUserSubscriptionPlan();
+  const productName = plan
+    ? plan
+    : tier === "Free"
+    ? "Pro"
+    : tier === "Pro"
+    ? "Premium"
+    : "Premium";
 
-  const user = await getUser();
-  if (user && !productId) {
-    const priceId = JSON.parse(user).stripePriceId;
-    if (priceId) {
-      const product_id = (await stripe.prices.retrieve(priceId))
-        .product as string;
-      productId = product_id;
-    }
+  if (productId.length === 0 && tier === "Free") {
+    productId =
+      productName === "Pro"
+        ? process.env.STRIPE_PRO_PRODUCT_ID!
+        : process.env.STRIPE_PREMIUM_PRODUCT_ID!;
   }
 
   return (
@@ -36,6 +37,15 @@ const Billing = async (props: Props) => {
         Billing
       </h1>
       <BillingDashboard
+        productName={
+          plan
+            ? plan
+            : tier === "Free"
+            ? "Pro"
+            : tier === "Pro"
+            ? "Premium"
+            : "Premium"
+        }
         productId={productId}
         isCanceled={isCanceled}
         isSubscribed={isSubscribed}

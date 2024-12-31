@@ -1,12 +1,11 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { currentUser } from "@clerk/nextjs/server";
 import Stripe from "stripe";
-import { User, UserType } from "./../models/user-model";
-import ConnectToDB from "./connectToDB";
+import { CustomNodeType, PropertyTypes, SupportedPropertyTypes } from "./types";
+import { HTMLInputTypeAttribute } from "react";
 
-export const stripe = new Stripe(process.env.STRIPE_SECRET!, {
-  apiVersion: "2024-04-10",
+export const stripe = new Stripe(`${process.env.STRIPE_SECRET!}`, {
+  apiVersion: "2024-12-18.acacia",
   typescript: true,
 });
 
@@ -14,71 +13,131 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export const absolutePathUrl = () => {
-  if (process.env.VERCEL_URL) return "https://synapsse.netlify.app";
-  return "http://localhost:3000";
+export const absolutePathUrl = "https://synapsse.netlify.app";
+
+export const oauthRedirectUri = `${absolutePathUrl}/api/auth/callback`;
+
+export const typedEntries = <T extends object>(data: T) => {
+  return Object.entries(data) as [keyof T, T[keyof T]][];
 };
 
-export async function getUserSubscriptionPlan() {
-  const user = await currentUser();
+// Types included automatically, if present in notion db schema- created_by, created_time, last_edited_by, last_edited_time
+// Unsupported types 'cause they are highly complex and time consuming to implement- files, formula, relation, rollup, unique_id, verification
+export const notionInputProperty: Record<
+  SupportedPropertyTypes,
+  HTMLInputTypeAttribute
+> = {
+  url: "url",
+  checkbox: "checkbox",
+  number: "number",
+  email: "email",
+  title: "text",
+  status: "text",
+  select: "text",
+  multi_select: "text",
+  phone_number: "tel",
+  date: "date",
+  rich_text: "text",
+  people: "text",
+};
 
-  ConnectToDB();
-  const dbUser = await User.findOne<UserType>({ userId: user?.id });
+export const isConnectionType = (nodeType: CustomNodeType | undefined) =>
+  !(nodeType === undefined || nodeType === "None" || nodeType === "AI");
 
-  if (!dbUser) {
-    return {
-      tier: "Free Plan",
-      isSubscribed: false,
-      isCanceled: false,
-      stripeCurrentPeriodEnd: null,
-      stripeSubscriptionId: null,
-      stripeCustomerId: null,
-    };
-  }
-
-  const isSubscribed = Boolean(
-    dbUser.stripePriceId &&
-      dbUser.stripeCurrentPeriodEnd && // 86400000 = 1 day
-      dbUser.stripeCurrentPeriodEnd.getTime() + 86_400_000 > Date.now()
+export const isValidTrigger = (nodeType: CustomNodeType | undefined) =>
+  !(
+    nodeType === undefined ||
+    nodeType === "None" ||
+    nodeType === "AI" ||
+    nodeType === "Notion"
   );
 
-  if (!isSubscribed && dbUser.stripePriceId) {
-    await User.findByIdAndUpdate(dbUser._id, {
-      $set: {
-        tier: "Free Plan",
-        credits: "0",
-        isAutoSave: false,
-        stripeCurrentPeriodEnd: null,
-        stripeSubscriptionId: null,
-        stripeCustomerId: null,
-        stripePriceId: null,
-      },
-    });
+export const isUnsupportedPropertyType = (property: PropertyTypes) => {
+  return (
+    property === "last_edited_by" ||
+    property === "last_edited_time" ||
+    property === "created_by" ||
+    property === "created_time" ||
+    property === "files" ||
+    property === "relation" ||
+    property === "rollup" ||
+    property === "unique_id" ||
+    property === "formula" ||
+    property === "verification"
+  );
+};
 
-    return {
-      tier: "Free Plan",
-      isSubscribed,
-      isCanceled: true,
-      stripeCurrentPeriodEnd: null,
-      stripeSubscriptionId: null,
-      stripeCustomerId: null,
-    };
+export const getPropertyItem = (
+  type: SupportedPropertyTypes,
+  value: string
+) => {
+  switch (type) {
+    case "title":
+      return {
+        title: [
+          {
+            text: {
+              content: value,
+            },
+          },
+        ],
+      };
+    case "multi_select":
+      return {
+        multi_select: [{ name: value }],
+      };
+    case "number":
+      return {
+        number: parseInt(value),
+      };
+    case "status":
+      return {
+        name: value,
+      };
+    case "date":
+      return {
+        date: {
+          start: value,
+          end: null,
+        },
+      };
+    case "checkbox":
+      return {
+        checkbox: value === "true" ? true : false,
+      };
+    case "email":
+      return {
+        email: value,
+      };
+    case "rich_text":
+      return {
+        rich_text: [
+          {
+            text: {
+              content: value,
+            },
+          },
+        ],
+      };
+    case "people":
+      return {
+        people: [
+          {
+            name: value,
+          },
+        ],
+      };
+    case "phone_number":
+      return {
+        phone_number: value,
+      };
+    case "select":
+      return {
+        name: value,
+      };
+    default:
+      return {
+        url: value,
+      };
   }
-
-  let isCanceled = false;
-  if (isSubscribed && dbUser.stripeSubscriptionId) {
-    const stripePlan = await stripe.subscriptions.retrieve(
-      dbUser.stripeSubscriptionId
-    );
-    isCanceled = stripePlan.cancel_at_period_end;
-  }
-
-  return {
-    tier: dbUser.tier,
-    stripeSubscriptionId: dbUser.stripeSubscriptionId,
-    stripeCurrentPeriodEnd: dbUser.stripeCurrentPeriodEnd,
-    stripeCustomerId: dbUser.stripeCustomerId,
-    isSubscribed,
-    isCanceled,
-  };
-}
+};

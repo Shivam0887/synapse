@@ -1,44 +1,54 @@
 "use client";
 
-import React from "react";
+import { TPlan } from "@/lib/types";
+import { createContext, useContext, useMemo, useState } from "react";
 
-type BillingProviderProps = {
+type TBillingContext = {
   credits: string;
-  tier: string;
+  tier: TPlan;
   setCredits: React.Dispatch<React.SetStateAction<string>>;
-  setTier: React.Dispatch<React.SetStateAction<string>>;
+  setTier: React.Dispatch<React.SetStateAction<TPlan>>;
 };
 
-const initialValues: BillingProviderProps = {
+const initialValues: TBillingContext = {
   credits: "",
   setCredits: () => {},
-  tier: "",
+  tier: "Free",
   setTier: () => {},
 };
 
-type WithChildProps = {
+type BillingProviderProps = {
   children: React.ReactNode;
+  tier: TPlan;
+  credits: string;
 };
 
-const context = React.createContext(initialValues);
-const { Provider } = context;
+const billingContext = createContext(initialValues);
 
-export const BillingProvider = ({ children }: WithChildProps) => {
-  const [credits, setCredits] = React.useState(initialValues.credits);
-  const [tier, setTier] = React.useState(initialValues.tier);
+export const BillingProvider = ({
+  children,
+  ...props
+}: BillingProviderProps) => {
+  const [credits, setCredits] = useState(props.credits);
+  const [tier, setTier] = useState(props.tier);
 
-  const values = {
-    credits,
-    setCredits,
-    tier,
-    setTier,
-  };
+  const value = useMemo(
+    () => ({
+      credits,
+      setCredits,
+      tier,
+      setTier,
+    }),
+    [credits, tier]
+  );
 
-  return <Provider value={values}>{children}</Provider>;
+  return (
+    <billingContext.Provider value={value}>{children}</billingContext.Provider>
+  );
 };
 
 export const useBilling = () => {
-  const state = React.useContext(context);
+  const state = useContext(billingContext);
   if (!state) throw new Error("useBilling can be used within Billing Provider");
   return state;
 };

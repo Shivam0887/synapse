@@ -1,9 +1,15 @@
-import { WorkflowType } from "@/models/workflow-model";
-import { ConnectionProviderProps } from "@/providers/connections-provider";
-import { Node } from "reactflow";
-import { z } from "zod";
+import { Node } from "@xyflow/react";
+import { Auth } from "googleapis";
+import { LucideIcon } from "lucide-react";
+
+export type TPlan = "Free" | "Pro" | "Premium";
 
 export type ConnectionTypes = "Google Drive" | "Notion" | "Slack" | "Discord";
+
+export type TriggerValue = "0" | "1" | "2" | "3" | "4";
+export type ActionValue = "0" | "1";
+
+export type OAuth2Client = Auth.OAuth2Client;
 
 export type Connection = {
   title: ConnectionTypes;
@@ -12,7 +18,7 @@ export type Connection = {
   message?: Record<string, string>;
 };
 
-export type CustomNodeTypes =
+export type CustomNodeType =
   | "AI"
   | "Slack"
   | "Google Drive"
@@ -20,22 +26,20 @@ export type CustomNodeTypes =
   | "None"
   | "Discord";
 
-export type CustomNodeDataType = {
+export type CustomNodeData = {
   title: string;
   description: string;
   completed: boolean;
   current: boolean;
-  metadata: any;
-  type: CustomNodeTypes;
 };
 
-export type CustomNodeType = Node<CustomNodeDataType, CustomNodeTypes>;
+export type CustomNode = Node<CustomNodeData, CustomNodeType>;
 
 export type EditorActions =
   | {
       type: "LOAD_DATA";
       payload: {
-        nodes: CustomNodeType[];
+        nodes: CustomNode[];
         edges: {
           id: string;
           source: string;
@@ -46,7 +50,7 @@ export type EditorActions =
   | {
       type: "UPDATE_NODE";
       payload: {
-        nodes: CustomNodeType[];
+        nodes: CustomNode[];
       };
     }
   | { type: "REDO" }
@@ -54,54 +58,33 @@ export type EditorActions =
   | {
       type: "SELECTED_ELEMENT";
       payload: {
-        node: CustomNodeType;
+        node: CustomNode;
       };
     };
 
 export const nodeMapper: Record<
   ConnectionTypes,
-  Extract<
-    keyof WorkflowType,
-    "discordId" | "slackId" | "notionId" | "googleDriveWatchTrigger"
-  >
+  "discordId" | "slackId" | "notionId" | "googleDriveId"
 > = {
   Notion: "notionId",
   Slack: "slackId",
   Discord: "discordId",
-  "Google Drive": "googleDriveWatchTrigger",
+  "Google Drive": "googleDriveId",
 };
 
 export type TriggerProps = {
   loading: boolean;
   onSave: () => void;
-  trigger: string;
-  setTrigger: React.Dispatch<React.SetStateAction<string>>;
+  trigger: TriggerValue;
+  setTrigger: React.Dispatch<React.SetStateAction<TriggerValue>>;
   workspaceName: string;
 };
 
 export type ActionDataType = {
   user: string | undefined;
   message: string;
-  type: "default" | "custom";
-  trigger: "0" | "1" | undefined;
-};
-
-export const actionSchema = z.object({
-  user: z.string().optional(),
-  message: z.string().default("test message"),
-  type: z.enum(["custom", "default"]).default("default"),
-  trigger: z.enum(["0", "1"]),
-});
-
-export type ActionType = z.infer<typeof actionSchema>;
-
-export type ActionProps = {
-  loading: boolean;
-  actionData: ActionDataType;
-  setActionData: React.Dispatch<React.SetStateAction<ActionDataType>>;
-  defaultMessage: string;
-  workflowId: string;
-  nodeId: string;
+  mode: "default" | "custom";
+  trigger: ActionValue;
 };
 
 export type PropertyTypes =
@@ -130,6 +113,20 @@ export type PropertyTypes =
   | "formula"
   | "verification";
 
+export type SupportedPropertyTypes =
+  | "number"
+  | "date"
+  | "email"
+  | "checkbox"
+  | "multi_select"
+  | "people"
+  | "phone_number"
+  | "rich_text"
+  | "select"
+  | "status"
+  | "title"
+  | "url";
+
 export type NotionDatabaseType = {
   id: string;
   name: string;
@@ -137,20 +134,22 @@ export type NotionDatabaseType = {
     name: string;
     type: PropertyTypes;
   }[];
-}[];
+};
 
 export type ResultDataType = {
   webhookUrl?: string | null;
   action?: {
     mode?: "default" | "custom" | null;
+    trigger: ActionValue;
     message?: string | null;
-    trigger?: string | null;
     user?: string | null;
   } | null;
-  nodeId?: string | null;
-  nodeType: "Discord" | "Notion" | "Slack" | "Google Drive";
-  accessToken?: string | null;
-  workflowId?: string | null;
+  properties: Record<string, unknown>;
+  nodeId: string;
+  nodeType: ConnectionTypes;
+  accessToken: string;
+  pageId?: string | null;
+  databaseId?: string | null;
 };
 
 export type ResultType = {
@@ -188,4 +187,28 @@ export type EventData = {
     guild_id: string;
     user?: DiscordUser;
   };
+};
+
+export type TPlanDetails = {
+  [plan in TPlan]: {
+    icon: LucideIcon;
+    desc: string;
+    available: boolean;
+  }[];
+};
+
+export type TActionResponse<T = string> =
+  | {
+      success: true;
+      data: T;
+    }
+  | { success: false; error: string };
+
+export type Credentials = {
+  access_token?: string | null;
+  refresh_token?: string | null;
+  expires_in?: number | null;
+  scope?: string;
+  token_type?: string | null;
+  id_token?: string | null;
 };

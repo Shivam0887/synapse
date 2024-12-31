@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { EmailAddress } from "@clerk/nextjs/server";
 import ConnectToDB from "@/lib/connectToDB";
-import { User, UserType } from "@/models/user-model";
+import { User, UserType } from "@/models/user.model";
+import { Log } from "@/models/logs.model";
 
 const userSchema = z.object({
   id: z.string(),
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       body?.data
     );
 
-    ConnectToDB();
+    await ConnectToDB();
     const isUserExists = await User.findOne<UserType>({ userId: id });
     if (!isUserExists) {
       await User.create({
@@ -30,11 +30,22 @@ export async function POST(req: NextRequest) {
         localImageUrl: image_url ?? "",
         email: email_addresses[0].email_address,
       });
+
+      const log = await Log.create({ userId: id });
+      await User.findOneAndUpdate(
+        { userId: id },
+        {
+          $set: {
+            logId: log?._id,
+          },
+        }
+      );
     }
 
     return new NextResponse("User created successfully!");
-  } catch (error: any) {
-    console.log("Error in creating user:", error?.message);
+  } catch (error) {
+    if (error instanceof Error)
+      console.log("Error in creating user:", error.message);
     return new NextResponse("Internal server error", { status: 500 });
   }
 }

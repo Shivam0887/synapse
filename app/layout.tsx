@@ -4,13 +4,15 @@ import "./globals.css";
 
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/providers/theme-provider";
-import ModalProvider from "@/providers/modal-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { StoreProvider } from "@/providers/store-provider";
 
 import { dark } from "@clerk/themes";
 import { cn } from "@/lib/utils";
 import { BillingProvider } from "@/providers/billing-provider";
+import Navbar from "@/components/globals/navbar";
+import { getUser } from "@/actions/user.actions";
+import { TPlan } from "@/lib/types";
 
 const font = DM_Sans({ subsets: ["latin"] });
 
@@ -19,11 +21,19 @@ export const metadata: Metadata = {
   description: "Automate your work with Synapse.",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const response = await getUser();
+  let credits = "0", tier: TPlan = "Free";
+
+  if (response.success) {
+    credits = response.data.credits; 
+    tier = response.data.tier;
+  }
+
   return (
     <ClerkProvider
       publishableKey={process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!}
@@ -39,11 +49,12 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <Toaster />
-            <ModalProvider>
-              <BillingProvider>
-                <StoreProvider>{children}</StoreProvider>
-              </BillingProvider>
-            </ModalProvider>
+            <BillingProvider credits={credits} tier={tier}>
+              <StoreProvider>
+                <Navbar />
+                {children}
+              </StoreProvider>
+            </BillingProvider>
           </ThemeProvider>
         </body>
       </html>

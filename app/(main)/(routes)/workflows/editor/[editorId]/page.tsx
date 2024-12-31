@@ -1,17 +1,17 @@
 import { ConnectionsProvider } from "@/providers/connections-provider";
 import EditorProvider from "@/providers/editor-provider";
 import Editor from "../_components/editor";
-import { currentUser } from "@clerk/nextjs/server";
-import { User } from "@/models/user-model";
+import { auth } from "@clerk/nextjs/server";
+import { User } from "@/models/user.model";
 import ConnectToDB from "@/lib/connectToDB";
 
 const Page = async ({ params }: { params: { editorId: string } }) => {
   const { editorId: workflowId } = params;
 
-  ConnectToDB();
-  const user = await currentUser();
+  await ConnectToDB();
+  const { userId } = await auth();
   await User.findOneAndUpdate(
-    { userId: user?.id },
+    { userId },
     {
       $set: {
         currentWorkflowId: workflowId,
@@ -20,7 +20,7 @@ const Page = async ({ params }: { params: { editorId: string } }) => {
   );
 
   return (
-    <div className="h-full">
+    <div className="h-full overflow-hidden">
       <EditorProvider>
         <ConnectionsProvider>
           <Editor />

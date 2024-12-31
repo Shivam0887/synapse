@@ -3,7 +3,6 @@
 import { useState } from "react";
 import UploadButton from "./upload-button";
 import { useRouter } from "next/navigation";
-import { Progress } from "@/components/ui/progress";
 import Image from "next/image";
 import { Loader2, X } from "lucide-react";
 import { useStore } from "@/providers/store-provider";

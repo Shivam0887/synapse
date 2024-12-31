@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useContext, createContext, useRef } from "react";
+import { useState, useContext, createContext, useMemo } from "react";
 
 type initialStateType = {
   username: string;
@@ -35,7 +35,7 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
   const [isChecked, setIsChecked] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
 
-  const value = {
+  const value = useMemo(() => ({
     username,
     localImageUrl,
     setLocalImageUrl,
@@ -46,7 +46,7 @@ export const StoreProvider = ({ children }: { children: React.ReactNode }) => {
     setIsChecked,
     isAutoSaving,
     setIsAutoSaving,
-  };
+  }), [email, isAutoSaving, isChecked, localImageUrl, username]);
 
   return (
     <StoreContext.Provider value={value}>{children}</StoreContext.Provider>

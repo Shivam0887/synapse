@@ -1,4 +1,5 @@
-import { User } from "@/models/user-model";
+import ConnectToDB from "@/lib/connectToDB";
+import { Log } from "@/models/logs.model";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -15,7 +16,8 @@ export async function PATCH(req: NextRequest) {
     const userId = req.nextUrl.searchParams.get("userId");
     if (!userId) throw new Error("user is not authenticated");
 
-    await User.findOneAndUpdate(
+    await ConnectToDB();
+    await Log.findOneAndUpdate(
       { userId },
       {
         $push: {
@@ -25,8 +27,9 @@ export async function PATCH(req: NextRequest) {
     );
 
     return new NextResponse(null, { status: 200 });
-  } catch (error: any) {
-    console.log(error?.message);
-    return new NextResponse(error?.message, { status: 500 });
+  } catch (error) {
+    if (error instanceof Error)
+      console.log("Logging error:", error.message);
+    return NextResponse.json({ error: "Logging error" }, { status: 500 });
   }
 }

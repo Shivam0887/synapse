@@ -1,10 +1,10 @@
-import { CustomNodeTypes } from "@/lib/types";
-import { CircuitBoard, HardDrive } from "lucide-react";
-import { SiNotion, SiDiscord } from "react-icons/si";
+import { CustomNodeType } from "@/lib/types";
+import { CircuitBoard } from "lucide-react";
+import { SiNotion, SiDiscord, SiGoogledrive } from "react-icons/si";
 import { FiSlack } from "react-icons/fi";
 
 type CustomNodeIconProps = {
-  type: CustomNodeTypes;
+  type: CustomNodeType;
 };
 
 const CustomNodeIcon = ({ type }: CustomNodeIconProps) => {
@@ -14,7 +14,7 @@ const CustomNodeIcon = ({ type }: CustomNodeIconProps) => {
     case "Slack":
       return <FiSlack className="flex-shrink-0" size={30} />;
     case "Google Drive":
-      return <HardDrive className="flex-shrink-0" size={30} />;
+      return <SiGoogledrive className="flex-shrink-0" size={30} />;
     case "Notion":
       return <SiNotion className="flex-shrink-0" size={30} />;
     default:

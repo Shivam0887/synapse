@@ -1,14 +1,10 @@
-import Sidebar from "@/components/sidebar";
-import InfoBar from "@/components/infobar";
+import Sidebar from "@/components/globals/sidebar";
 
 const MainLayout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="flex !overflow-hidden h-screen">
+    <div className="flex overflow-hidden h-[calc(100vh-4rem)]">
       <Sidebar />
-      <div className="flex-1 bg-black">
-        <InfoBar />
-        {children}
-      </div>
+      <div className="flex-1 h-full bg-black">{children}</div>
     </div>
   );
 };

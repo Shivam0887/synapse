@@ -7,8 +7,8 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { TriggerProps } from "@/lib/types";
-import WorkflowLoading from "../workflow-loading";
+import { TriggerProps, TriggerValue } from "@/lib/types";
+import WorkflowLoading from "../../../../../../../components/workflow-loading";
 
 const DiscordTrigger = ({
   loading,
@@ -24,7 +24,10 @@ const DiscordTrigger = ({
       ) : (
         <>
           <h3 className="my-2">#{workspaceName}</h3>
-          <Select onValueChange={setTrigger} defaultValue={trigger}>
+          <Select
+            onValueChange={(val) => setTrigger(val as TriggerValue)}
+            defaultValue={trigger}
+          >
             <SelectTrigger className="text-neutral-400">
               <SelectValue placeholder="select trigger" />
             </SelectTrigger>

@@ -2,11 +2,11 @@
 
 import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { LIMIT } from "@/lib/constant";
+import { LIMIT } from "@/lib/constants";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Ghost, Loader2 } from "lucide-react";
-import { getLogs } from "./_actions/log-action";
+import { getLogs } from "@/actions/log.actions";
 
 const LogPage = () => {
   const [logs, setLogs] = useState<
@@ -20,20 +20,18 @@ const LogPage = () => {
     (async () => {
       setIsLoading(true);
       const response = await getLogs(pageNum);
-      if (response) {
-        const result = JSON.parse(response);
-        if (result.success) {
-          if (result.data.length === 0) setHasMore(false);
-          else {
-            setHasMore(result.data[0].logs.length > LIMIT);
-            const { logs } = result.data[0];
+      if(!response.success) {
+        toast.error(response.error);
+        return;
+      }
 
-            setLogs((prev) => [...prev, ...logs]);
-          }
-        } else {
-          console.log(result.error);
-          toast.error(result.error);
-        }
+    const result = response.data;
+      if (result.length === 0) setHasMore(false);
+      else {
+        setHasMore(result[0].logs.length > LIMIT);
+        const { logs } = result[0];
+
+        setLogs((prev) => [...prev, ...logs]);
       }
       setIsLoading(false);
     })();

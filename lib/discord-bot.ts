@@ -49,6 +49,8 @@ type UserReceiveEvents =
   | "messageReactionAdd"
   | "guildMemberAdd";
 
+type FunctionHandler = (data: any) => Promise<void>
+
 // Configuration
 const API_VERSION = "10";
 const ENCODING = "json";
@@ -74,7 +76,11 @@ class DiscordClient {
   private zombiedTimeout: NodeJS.Timeout | null = null;
   private ws: WebSocket | null = null;
 
-  private eventHandlers: { [key: string]: Function[] } = {};
+  private eventHandlers: { [key in UserReceiveEvents]: FunctionHandler[] } = {
+    guildMemberAdd: [],
+    messageCreate: [],
+    messageReactionAdd: []
+  };
 
   constructor(token: string) {
     this.BOT_TOKEN = token;
@@ -389,7 +395,7 @@ class DiscordClient {
     return member;
   }
 
-  private emit(event: string, data: any) {
+  private emit(event: UserReceiveEvents, data: any) {
     if (this.eventHandlers[event]) {
       this.eventHandlers[event].forEach((handler) => {
         if (event === "messageCreate") handler(this.handleMessageCreate(data));
@@ -400,14 +406,14 @@ class DiscordClient {
     }
   }
 
-  public on(event: UserReceiveEvents, handler: Function) {
+  public on(event: UserReceiveEvents, handler: FunctionHandler) {
     if (!this.eventHandlers[event]) {
       this.eventHandlers[event] = [];
     }
     this.eventHandlers[event].push(handler);
   }
 
-  public off(event: UserReceiveEvents, handler: Function) {
+  public off(event: UserReceiveEvents, handler: FunctionHandler) {
     if (this.eventHandlers[event]) {
       this.eventHandlers[event] = this.eventHandlers[event].filter(
         (h) => h !== handler

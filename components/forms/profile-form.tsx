@@ -14,7 +14,6 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
 import { useStore } from "@/providers/store-provider";
 
 const ProfileSchema = z.object({

@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import ConnectToDB from "@/lib/connectToDB";
-import { User, UserType } from "@/models/user-model";
-import { currentUser } from "@clerk/nextjs/server";
-import { Notion } from "@/models/notion-model";
-import { Workflow } from "@/models/workflow-model";
-import { absolutePathUrl } from "@/lib/utils";
+import { User, UserType } from "@/models/user.model";
+import { Notion } from "@/models/notion.model";
+import { Workflow } from "@/models/workflow.model";
+import { absolutePathUrl, oauthRedirectUri } from "@/lib/utils";
 
 const clientId = process.env.NOTION_CLIENT_ID!;
 const clientSecret = process.env.NOTION_CLIENT_SECRET!;
-const redirectUri = process.env.NOTION_REDIRECT_URI!;
+const redirectUri = oauthRedirectUri + "/notion";
 
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
@@ -20,7 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (error) {
-    return NextResponse.redirect(`https://synapsse.netlify.app/workflows`);
+    return NextResponse.redirect(`${absolutePathUrl}/workflows`);
   }
 
   if (!code) {
@@ -28,7 +27,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    ConnectToDB();
+    await ConnectToDB();
     const dbUser = await User.findOne<UserType>(
       { userId },
       { currentWorkflowId: 1 }
@@ -88,14 +87,19 @@ export async function GET(req: NextRequest) {
         }
 
         return NextResponse.redirect(
-          `https://synapsse.netlify.app/workflows/editor/${dbUser?.currentWorkflowId}`
+          `${absolutePathUrl}/workflows/editor/${dbUser?.currentWorkflowId}`
         );
       }
     } else if (error) {
       throw new Error(error);
     }
-  } catch (error: any) {
-    console.log(error?.message);
-    return NextResponse.redirect(`https://synapsse.netlify.app/workflows`);
+  } catch (error) {
+    if (error instanceof Error)
+      console.log("Failed to connect with Notion:", error.message);
+
+    return new NextResponse(
+      "Internal Server Error. Failed to connect with Notion",
+      { status: 500 }
+    );
   }
 }

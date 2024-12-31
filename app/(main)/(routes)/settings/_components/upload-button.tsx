@@ -1,6 +1,5 @@
 import { useDropzone } from "@uploadthing/react";
 import { useUploadThing } from "@/lib/uploadthing";
-import { generateClientDropzoneAccept } from "uploadthing/client";
 import { useStore } from "@/providers/store-provider";
 import axios from "axios";
 import { absolutePathUrl } from "@/lib/utils";
@@ -14,32 +13,26 @@ type UploadButtonProps = {
 const UploadButton = ({ setProgress, label }: UploadButtonProps) => {
   const { user } = useUser();
   const { setLocalImageUrl } = useStore();
-  const { startUpload, permittedFileInfo } = useUploadThing("imageUploader", {
+  const { startUpload } = useUploadThing("imageUploader", {
     onUploadProgress: (progress) => {
       setProgress(progress);
     },
     onClientUploadComplete: async (files) => {
       setProgress(0);
       setLocalImageUrl(files[0].serverData.localImageUrl);
-      await axios.patch(
-        `https://synapsse.netlify.app/api/logs?userId=${user?.id}`,
-        {
-          status: true,
-          action: "User Info",
-          message: `Profile photo changed successfully!`,
-        }
-      );
+      await axios.patch(`${absolutePathUrl}/api/logs?userId=${user?.id}`, {
+        status: true,
+        action: "User Info",
+        message: `Profile photo changed successfully!`,
+      });
     },
     onUploadError: async (err) => {
-      console.log(err.message);
-      await axios.patch(
-        `https://synapsse.netlify.app/api/logs?userId=${user?.id}`,
-        {
-          status: false,
-          action: "User Info",
-          message: `Failed to upload profile photo successfully!`,
-        }
-      );
+      console.log("Image upload error: ", err.message);
+      await axios.patch(`${absolutePathUrl}/api/logs?userId=${user?.id}`, {
+        status: false,
+        action: "User Info",
+        message: `Failed to upload profile photo successfully!`,
+      });
     },
   });
 
@@ -49,13 +42,8 @@ const UploadButton = ({ setProgress, label }: UploadButtonProps) => {
     }
   };
 
-  const fileTypes = permittedFileInfo?.config
-    ? Object.keys(permittedFileInfo.config)
-    : [];
-
   const { getRootProps, getInputProps } = useDropzone({
     onDrop,
-    accept: fileTypes ? generateClientDropzoneAccept(fileTypes) : undefined,
     multiple: false,
   });
 

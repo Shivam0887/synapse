@@ -1,303 +1,241 @@
-import ConnectToDB from "@/lib/connectToDB";
-import { User, UserType } from "@/models/user-model";
-import { headers } from "next/headers";
-import { NextRequest } from "next/server";
-import { google } from "googleapis";
 import axios from "axios";
-import { Workflow, WorkflowType } from "@/models/workflow-model";
-import { mapper } from "@/lib/constant";
+import { google } from "googleapis";
+import { NextRequest, NextResponse } from "next/server";
 
-import { onCreatePage } from "@/app/(main)/(routes)/connections/_actions/notion-action";
-import { postContentToWebhook } from "@/app/(main)/(routes)/connections/_actions/discord-action";
-import { ResultDataType } from "@/lib/types";
-import { absolutePathUrl } from "@/lib/utils";
+import { mapper } from "@/lib/constants";
+import ConnectToDB from "@/lib/connectToDB";
+import { absolutePathUrl, oauthRedirectUri } from "@/lib/utils";
 
-const onMessageSend = async ({
-  nodeType,
-  action,
-  webhookUrl,
-  nodeId,
-  workflowId,
-  accessToken,
-}: ResultDataType) => {
-  if (nodeType === "Notion") {
-    await onCreatePage({
-      workflowId: workflowId!,
-      isTesting: false,
-      nodeId: nodeId!,
-    });
-  } else if (action?.trigger) {
-    if (nodeType === "Discord") {
-      if (action.trigger === "1") {
-        const channelResponse = await axios.post(
-          "https://discord.com/api/v10/users/@me/channels",
-          {
-            recipient_id: action.user!,
-          },
-          {
-            headers: {
-              Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
-              "Content-Type": "application/json",
-            },
-          }
-        );
+import { User, UserType } from "@/models/user.model";
+import { Workflow, WorkflowType } from "@/models/workflow.model";
+import { getGoogleDriveInstance } from "../watch/route";
+import { GoogleDrive } from "@/models/google-drive.model";
+import { sendMessage } from "@/actions/utils.actions";
 
-        const channelId = channelResponse.data?.id;
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_DRIVE_CLIENT_ID!,
+  process.env.GOOGLE_DRIVE_CLIENT_SECRET!,
+  `${oauthRedirectUri}/google_drive`
+);
 
-        if (channelId) {
-          // Step 2: Send a message to the DM channel
-          await axios.post(
-            `https://discord.com/api/v10/channels/${channelId}/messages`,
-            {
-              content: action.message!,
-            },
-            {
-              headers: {
-                Authorization: `Bot ${process.env.DISCORD_BOT_TOKEN!}`,
-                "Content-Type": "application/json",
-              },
-            }
-          );
-        }
-      } else await postContentToWebhook(action.message!, webhookUrl!, nodeType);
+const checkAndRefreshToken = async (
+  accessToken: string,
+  refreshToken: string,
+  expiresAt: number,
+  nodeId: string
+) => {
+  try {
+    // Check if the token has expired
+    const currentTime = Date.now();
+    if (expiresAt && currentTime < expiresAt - 60000) {
+      oauth2Client.setCredentials({
+        access_token: accessToken,
+      });
     } else {
-      if (action.trigger === "1") {
-        await axios.post(
-          "https://slack.com/api/chat.postMessage",
-          { channel: action.user!, text: action.message! },
-          {
-            headers: {
-              Authorization: `Bearer ${accessToken!}`,
-            },
-          }
-        );
-      } else await postContentToWebhook(action.message!, webhookUrl!, nodeType);
+      oauth2Client.setCredentials({
+        refresh_token: refreshToken,
+      });
+
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      oauth2Client.setCredentials({
+        access_token: credentials.access_token,
+      });
+
+      await ConnectToDB();
+      await GoogleDrive.findOneAndUpdate(
+        { nodeId },
+        {
+          $set: {
+            accessToken: credentials.access_token,
+            expiresAt: credentials.expiry_date
+          },
+        }
+      );
+
+      console.log("Access token refreshed.");
     }
+
+    return true;
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.error === "invalid_grant"
+        ? "RE_AUTHENTICATE_GOOGLE_DRIVE"
+        : error.message;
+
+    console.log("Error while refreshing the Google Drive token", errorMessage);
+    return false;
   }
 };
 
 export async function POST(req: NextRequest) {
   try {
-    console.log("🔴 Changed");
-    const headersList = headers();
-    const workflowId = req.nextUrl.searchParams.get("workflowId")!;
+    const workflowId = req.nextUrl.searchParams.get("workflowId");
     const userId = req.nextUrl.searchParams.get("userId");
+    const nodeId = req.nextUrl.searchParams.get("nodeId");
 
-    const resourceId = headersList.get("x-goog-resource-id");
-
-    if (resourceId && userId) {
-      ConnectToDB();
-      const dbUser = await User.findOne<
-        Pick<UserType, "_id" | "WorkflowToDrive" | "credits" | "tier">
-      >(
-        {
-          userId,
-          workflowId,
-        },
-        { WorkflowToDrive: 1, credits: 1, tier: 1 }
+    if (!workflowId || !userId || !nodeId) {
+      return new NextResponse(
+        "Bad request. Please provide the required params",
+        { status: 400 }
       );
+    }
 
-      if (!dbUser) {
-        throw new Error("user is not authenticated");
-      }
+    const channelId = req.headers.get("x-goog-channel-id");
+    const resourceId = req.headers.get("x-goog-resource-id");
+    console.log("🔴 Changed", { resourceId, channelId });
 
-      const workflow = await Workflow.findById<
-        Pick<WorkflowType, "_id" | "googleDriveWatchTrigger">
-      >(workflowId, { googleDriveWatchTrigger: 1 });
+    await ConnectToDB();
+    const dbUser = await User.findOne<Pick<UserType, "_id" | "credits" | "tier">>(
+      { userId }, { credits: 1, tier: 1 }
+    );
 
-      if (!workflow) {
-        throw new Error("workflow not found");
-      }
+    if (!dbUser) {
+      return new NextResponse("user is not authenticated", { status: 401 });
+    }
 
-      const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        process.env.OAUTH2_REDIRECT_URI
-      );
+    const googleDrive = await getGoogleDriveInstance(nodeId);
+    if (!googleDrive) {
+      throw new Error(`No such Google Drive instance found: ${nodeId}`);
+    }
 
-      const clerkResponse = await axios.get(
-        `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_google`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.CLERK_SECRET_KEY!}`,
-          },
-        }
-      );
+    const workflow = await Workflow.findById<WorkflowType>(workflowId);
+    if (!workflow) {
+      throw new Error(`No such workflow found: ${workflowId}`);
+    }
 
-      const accessToken = clerkResponse.data[0].token;
-      oauth2Client.setCredentials({
-        access_token: accessToken,
-      });
+    const {
+      changes,
+      includeRemoved,
+      restrictToMyDrive,
+      supportedAllDrives,
+      accessToken,
+      refreshToken,
+      expiresAt,
+    } = googleDrive;
 
-      const drive = google.drive({
-        version: "v3",
-        auth: oauth2Client,
-      });
+    if (googleDrive.pageToken === null)
+      return new NextResponse("PageToken not found", { status: 404 });
 
-      if (dbUser.credits === "Unlimited" || parseInt(dbUser.credits) > 0) {
-        const { googleDriveWatchTrigger } = workflow;
+    const ok = await checkAndRefreshToken(
+      accessToken,
+      refreshToken,
+      expiresAt,
+      nodeId
+    );
 
-        if (googleDriveWatchTrigger?.changes === "true") {
-          const {
-            includeRemoved,
-            restrictToMyDrive,
-            supportedAllDrives,
-            pageToken,
-          } = googleDriveWatchTrigger;
-          let nextPageToken = pageToken;
+    if (!ok) throw new Error("Reconnect your Google Drive account");
 
-          if (
-            includeRemoved &&
-            restrictToMyDrive &&
-            supportedAllDrives &&
-            nextPageToken
-          ) {
-            const response = await drive.changes.list({
-              pageToken: nextPageToken,
-              includeRemoved: mapper[includeRemoved],
-              restrictToMyDrive: mapper[restrictToMyDrive],
-              supportsAllDrives: mapper[supportedAllDrives],
-              includeItemsFromAllDrives: mapper[supportedAllDrives],
-              pageSize: 1,
-            });
+    const drive = google.drive({
+      version: "v3",
+      auth: oauth2Client,
+    });
 
-            if (
-              dbUser.WorkflowToDrive.has(workflowId) &&
-              response.data?.changes &&
-              response.data.changes.length > 0
-            ) {
-              nextPageToken = response.data.nextPageToken;
-              const changeType = response.data.changes[0].changeType;
-              const isRemoved = response.data.changes[0].removed;
-              const fileName = response.data.changes[0].file?.name;
-              const driveName = response.data.changes[0].drive?.name;
+    if (dbUser.tier === "Premium" || (!isNaN(parseInt(dbUser.credits)) && parseInt(dbUser.credits) > 0)) {
 
-              await Promise.all(
-                dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
-                  const {
-                    webhookUrl,
-                    accessToken,
-                    nodeType,
-                    nodeId,
-                    action,
-                    workflowId,
-                  } = data;
-
-                  let updatedAction = action;
-                  if (nodeType === "Discord" || nodeType === "Slack") {
-                    updatedAction = {
-                      ...action,
-                      message:
-                        action!.message +
-                        (changeType === "file" && !isRemoved
-                          ? `${fileName!} file.`
-                          : changeType === "drive" && !isRemoved
-                          ? `${driveName!} drive.`
-                          : ""),
-                    };
-                  }
-
-                  await onMessageSend({
-                    webhookUrl,
-                    accessToken,
-                    nodeType,
-                    nodeId,
-                    action: updatedAction,
-                    workflowId,
-                  });
-                })
-              );
-            }
-          }
-        } else if (googleDriveWatchTrigger?.files === "true") {
-          const { supportedAllDrives, pageToken } = googleDriveWatchTrigger;
-          let nextPageToken = pageToken;
-
-          if (supportedAllDrives && nextPageToken) {
-            const response = await drive.files.list({
-              corpora: "allDrives",
-              pageToken: nextPageToken,
-              q: "trashed = false",
-              pageSize: 1,
-              orderBy: "modifiedByMeTime,viewedByMeTime",
-              supportsAllDrives: mapper[supportedAllDrives],
-              includeItemsFromAllDrives: mapper[supportedAllDrives],
-            });
-
-            if (
-              dbUser.WorkflowToDrive.has(workflowId) &&
-              response.data?.files &&
-              response.data.files.length > 0
-            ) {
-              const fileName = response.data.files[0].name;
-              nextPageToken = response.data.nextPageToken;
-
-              await Promise.all(
-                dbUser.WorkflowToDrive.get(workflowId)!.map(async (data) => {
-                  const {
-                    webhookUrl,
-                    accessToken,
-                    nodeType,
-                    nodeId,
-                    action,
-                    workflowId,
-                  } = data;
-
-                  let updatedAction = action;
-                  if (nodeType === "Discord" || nodeType === "Slack") {
-                    updatedAction = {
-                      ...action,
-                      message: action!.message + `${fileName} file.`,
-                    };
-                  }
-
-                  await onMessageSend({
-                    webhookUrl,
-                    accessToken,
-                    nodeType,
-                    nodeId,
-                    action: updatedAction,
-                    workflowId,
-                  });
-                })
-              );
-            }
-          }
-        }
-
-        if (dbUser.tier !== "Premium Plan") {
-          await User.findByIdAndUpdate(dbUser._id, {
-            $set: {
-              credits: `${parseInt(dbUser.credits) - 1}`,
-            },
-          });
-        }
-      } else {
-        await Workflow.findByIdAndUpdate(workflowId, {
-          $set: {
-            "googleDriveWatchTrigger.isListening": false,
-            publish: false,
-          },
+      if (changes === "true") {
+        const response = await drive.changes.list({
+          includeRemoved: mapper[includeRemoved],
+          restrictToMyDrive: mapper[restrictToMyDrive],
+          supportsAllDrives: mapper[supportedAllDrives],
+          includeItemsFromAllDrives: mapper[supportedAllDrives],
+          pageToken: googleDrive.pageToken,
+          pageSize: 1,
         });
 
-        await axios.get(
-          `https://synapsse.netlify.app/api/drive/watch?workflowId=${workflowId}&userId=${userId}`
-        );
+        if (response.data?.changes?.length) {
+          const changeType = response.data.changes[0].changeType;
+          const isRemoved = response.data.changes[0].removed;
+          const fileName = response.data.changes[0].file?.name;
+          const driveName = response.data.changes[0].drive?.name;
+          const fileId = response.data.changes[0].fileId;
+          const driveId = response.data.changes[0].driveId;
 
-        await axios.patch(
-          `https://synapsse.netlify.app/api/logs?userId=${userId}`,
-          {
-            status: false,
-            action: "Limit Exceeds",
-            message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
-          }
-        );
+          await Promise.all(
+            workflow.flowMetadata.map(async (data) => {
+              const { webhookUrl, accessToken, nodeType, nodeId, action, properties } = data;
+
+              if (action && (nodeType === "Discord" || nodeType === "Slack")) {
+                action.message +=
+                  (changeType === "file"
+                    ? isRemoved ? `file removed with id ${fileId}` : `${fileName} file`
+                    : isRemoved ? `drive removed with id ${driveId}` : `${driveName} drive.`
+                  );
+              }
+
+              await sendMessage({
+                webhookUrl,
+                accessToken,
+                nodeType,
+                nodeId,
+                action,
+                workflowId,
+                properties
+              });
+            })
+          );
+        }
+      } else {
+        const response = await drive.files.list({
+          supportsAllDrives: mapper[supportedAllDrives],
+          pageToken: googleDrive.pageToken,
+          pageSize: 1,
+        });
+
+        if (response.data?.files && response.data.files.length > 0) {
+          const fileName = response.data.files[0].name;
+          await Promise.all(
+            workflow.flowMetadata.map(async (data) => {
+              const { webhookUrl, accessToken, nodeType, nodeId, action, properties } = data;
+
+              if (action && (nodeType === "Discord" || nodeType === "Slack"))
+                action.message += `${fileName} file.`;
+
+              await sendMessage({
+                webhookUrl,
+                accessToken,
+                nodeType,
+                nodeId,
+                action,
+                workflowId,
+                properties
+              });
+            })
+          );
+        }
       }
+
+      if (dbUser.tier !== "Premium") {
+        await User.findByIdAndUpdate(dbUser._id, {
+          $set: {
+            credits: `${parseInt(dbUser.credits) - 1}`,
+          },
+        });
+      }
+    } 
+    else {
+      await drive.channels.stop({
+        requestBody: {
+          id: googleDrive.channelId,
+          resourceId: googleDrive.resourceId
+        },
+      });
+
+      await axios.patch(`${absolutePathUrl}/api/logs?userId=${userId}`, {
+        status: false,
+        action: "Limit Exceeds",
+        message: `Workflow Id: ${workflowId}, Workflow unpublished due to low credits!`,
+      });
     }
+
+    await GoogleDrive.findOneAndUpdate({ nodeId }, {
+      $set: {
+        pageToken: (await drive.changes.getStartPageToken({}))?.data?.startPageToken
+      }
+    });
 
     return Response.json({ message: "flow completed" }, { status: 200 });
   } catch (error: any) {
-    console.log(error);
+    console.log("Google drive notification error:", error?.message);
     return Response.json(
       { message: "notification to changes failed" },
       { status: 500 }

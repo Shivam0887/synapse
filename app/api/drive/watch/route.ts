@@ -1,26 +1,128 @@
-import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
 import { google } from "googleapis";
 import ConnectToDB from "@/lib/connectToDB";
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { User, UserType } from "@/models/user-model";
-import { Workflow, WorkflowType } from "@/models/workflow-model";
-import { mapper } from "@/lib/constant";
-import { connections } from "mongoose";
-import { revalidatePath } from "next/cache";
+import { User, UserType } from "@/models/user.model";
+import { Workflow, WorkflowType } from "@/models/workflow.model";
+import { mapper } from "@/lib/constants";
 
-export async function GET(req: NextRequest) {
+import z from "zod";
+import { GoogleDrive, GoogleDriveType } from "@/models/google-drive.model";
+import { absolutePathUrl, oauthRedirectUri } from "@/lib/utils";
+
+type GoogleDriveInstance = Pick<
+  GoogleDriveType,
+  | "changes"
+  | "fileId"
+  | "driveId"
+  | "includeRemoved"
+  | "restrictToMyDrive"
+  | "supportedAllDrives"
+  | "accessToken"
+  | "refreshToken"
+  | "expiresAt"
+  | "nodeId"
+  | "channelId"
+  | "resourceId"
+  | "pageToken"
+>;
+
+const reqSchema = z.object({
+  nodeId: z.string({ message: "No nodeId provided" }),
+  userId: z.string({ message: "No userId provided" }),
+  workflowId: z.string({ message: "No workflowId provided" }),
+});
+
+const oauth2Client = new google.auth.OAuth2(
+  process.env.GOOGLE_DRIVE_CLIENT_ID!,
+  process.env.GOOGLE_DRIVE_CLIENT_SECRET!,
+  `${oauthRedirectUri}/google_drive`
+);
+
+const checkAndRefreshToken = async (
+  accessToken: string,
+  refreshToken: string,
+  expiresAt: number,
+  nodeId: string
+) => {
   try {
-    const workflowId = req.nextUrl.searchParams.get("workflowId")!;
-    const userId = req.nextUrl.searchParams.get("userId");
+    // Check if the token has expired
+    const currentTime = Date.now();
+    if (expiresAt && currentTime < expiresAt - 60000) {
+      oauth2Client.setCredentials({
+        access_token: accessToken,
+      });
+    } else {
+      oauth2Client.setCredentials({
+        refresh_token: refreshToken,
+      });
 
-    ConnectToDB();
+      const { credentials } = await oauth2Client.refreshAccessToken();
+      oauth2Client.setCredentials({
+        access_token: credentials.access_token,
+      });
 
-    const dbUser = await User.findOne<
-      Pick<UserType, "_id" | "WorkflowToDrive">
-    >({ userId }, { WorkflowToDrive: 1 });
+      await ConnectToDB();
+      await GoogleDrive.findOneAndUpdate(
+        { nodeId },
+        {
+          $set: {
+            accessToken: credentials.access_token,
+            expiresAt: credentials.expiry_date
+          },
+        }
+      );
+
+      console.log("Access token refreshed.");
+    }
+
+    return true;
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.error === "invalid_grant"
+        ? "RE_AUTHENTICATE_GOOGLE_DRIVE"
+        : error.message;
+
+    console.log("Error while refreshing the Google Drive token", errorMessage);
+    return false;
+  }
+};
+
+export const getGoogleDriveInstance = async (nodeId: string) => {
+  await ConnectToDB();
+  return await GoogleDrive.findOne<GoogleDriveInstance>(
+    { nodeId },
+    {
+      changes: 1,
+      fileId: 1,
+      files: 1,
+      driveId: 1,
+      includeRemoved: 1,
+      restrictToMyDrive: 1,
+      supportedAllDrives: 1,
+      expiresAt: 1,
+      accessToken: 1,
+      refreshToken: 1,
+      nodeId: 1,
+      channelId: 1,
+      resourceId: 1,
+      pageToken: 1,
+      _id: 0,
+    }
+  );
+};
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const { nodeId, userId, workflowId } = reqSchema.parse(await req.json());
+
+    await ConnectToDB();
+    const dbUser = await User.findOne<Pick<UserType, "_id">>(
+      { userId },
+      { _id: 1 }
+    );
 
     if (!dbUser)
       return NextResponse.json(
@@ -28,141 +130,177 @@ export async function GET(req: NextRequest) {
         { status: 401 }
       );
 
-    const oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID!,
-      process.env.GOOGLE_CLIENT_SECRET!,
-      process.env.OAUTH2_REDIRECT_URI!
-    );
+    const googleDrive = await getGoogleDriveInstance(nodeId);
+    if (!googleDrive) {
+      return new NextResponse("No Google Drive trigger found", { status: 404 });
+    }
 
-    const clerkResponse = await axios.get(
-      `https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_google`,
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY!}`,
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    const accessToken = clerkResponse.data[0].token;
-
-    oauth2Client.setCredentials({
-      access_token: accessToken,
-    });
-
-    const drive = google.drive({
-      version: "v3",
-      auth: oauth2Client,
-    });
-
-    const result = await Workflow.findOne<
-      Pick<WorkflowType, "_id" | "googleDriveWatchTrigger">
-    >({ _id: workflowId, userId: dbUser._id }, { googleDriveWatchTrigger: 1 });
-
-    let expiresAt = -1;
-    let watchedResourceUri = "";
-    let _channelId = "";
-    let _resourceId = "";
-    const pageToken = (await drive.changes.getStartPageToken({})).data
-      .startPageToken;
-
-    if (result && result.googleDriveWatchTrigger?.isListening) {
-      _channelId = uuidv4();
+    const startWatch = async (googleDrive: GoogleDriveInstance) => {
+      let resourceId: string | null | undefined;
+      let expiresIn: number | null = null;
+      
+      const channelId = uuidv4();
       const {
         changes,
         fileId,
-        files,
-        folderId,
+        driveId,
         includeRemoved,
         restrictToMyDrive,
         supportedAllDrives,
-      } = result.googleDriveWatchTrigger!;
+        nodeId,
+        accessToken,
+        refreshToken,
+        expiresAt,
+      } = googleDrive;
 
-      if (
-        changes === "true" &&
-        includeRemoved &&
-        restrictToMyDrive &&
-        supportedAllDrives &&
-        pageToken
-      ) {
+      const ok = await checkAndRefreshToken(
+        accessToken,
+        refreshToken,
+        expiresAt,
+        nodeId
+      );
+
+      if (!ok) throw new Error("Reconnect your Google Drive account");
+      
+      const drive = google.drive({
+        version: "v3",
+        auth: oauth2Client,
+      });
+
+      const pageToken = (await drive.changes.getStartPageToken({}))?.data?.startPageToken;
+
+      if (changes === "true") {
+
+        if (pageToken === null)
+          return new NextResponse("PageToken not found", { status: 404 });
+
         const channel = await drive.changes.watch({
           pageToken,
           supportsAllDrives: mapper[supportedAllDrives],
           includeRemoved: mapper[includeRemoved],
           pageSize: 1,
           restrictToMyDrive: mapper[restrictToMyDrive],
-          requestBody: {
-            id: _channelId,
-            type: "web_hook",
-            resourceId: folderId,
-            address: `https://synapsse.netlify.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
-            kind: "api#channel",
-          },
-        });
-
-        if (channel?.data?.expiration && channel.data.resourceUri) {
-          watchedResourceUri = channel.data.resourceUri;
-          expiresAt = parseInt(channel.data.expiration);
-        }
-        if (channel?.data?.resourceId) {
-          _resourceId = channel.data.resourceId;
-        }
-      } else if (files === "false" && supportedAllDrives && fileId) {
-        const channel = await drive.files.watch({
-          supportsAllDrives: mapper[supportedAllDrives!],
-          fileId,
-        });
-
-        if (channel?.data?.expiration && channel.data.resourceUri) {
-          watchedResourceUri = channel.data.resourceUri;
-          expiresAt = parseInt(channel.data.expiration);
-        }
-        if (channel?.data?.resourceId) {
-          _resourceId = channel.data.resourceId;
-        }
-      }
-    } else if (
-      result?.googleDriveWatchTrigger &&
-      !result.googleDriveWatchTrigger.isListening
-    ) {
-      const { channelId, resourceUri, resourceId } =
-        result.googleDriveWatchTrigger;
-      _channelId = "";
-      watchedResourceUri = "";
-      _resourceId = "";
-
-      if (channelId && resourceId && resourceUri) {
-        await drive.channels.stop({
+          driveId,
           requestBody: {
             id: channelId,
-            resourceId,
-            kind: "api#channel",
+            address: `${absolutePathUrl}/api/drive/notification?nodeId=${nodeId}&userId=${userId}&workflowId=${workflowId}`,
             type: "web_hook",
-            address: `https://synapsse.netlify.app/api/drive/notification?workflowId=${workflowId}&userId=${userId}`,
-            resourceUri,
           },
         });
+
+        if(channel.data) {
+          if (channel.data?.expiration && !isNaN(parseInt(channel.data.expiration)))
+            expiresIn = parseInt(channel.data.expiration) - Date.now();
+
+          resourceId = channel.data.resourceId;
+        }
+      } else {
+        const channel = await drive.files.watch({
+          supportsAllDrives: mapper[supportedAllDrives],
+          fileId,
+          requestBody: {
+            id: channelId,
+            address: `${absolutePathUrl}/api/drive/notification?nodeId=${nodeId}&userId=${userId}&workflowId=${workflowId}`,
+            type: "web_hook",
+          },
+        });
+
+        if(channel.data) {
+          if (channel.data?.expiration && !isNaN(parseInt(channel.data.expiration)))
+            expiresIn = parseInt(channel.data.expiration) - Date.now();
+
+          resourceId = channel.data.resourceId;
+        }
       }
+
+      await GoogleDrive.findOneAndUpdate(
+        { nodeId },
+        {
+          $set: {
+            channelId,
+            resourceId,
+            pageToken
+          },
+        }
+      );
+
+      if (expiresIn !== null && expiresIn > 0) {
+        setTimeout(async () => {
+          const googleDrive = await getGoogleDriveInstance(nodeId);
+          const workflow = await Workflow.findById<Pick<WorkflowType, "parentId" | "publish">>(
+            workflowId, 
+            { parentId: 1, publish: 1, _id: 0 }
+          );
+
+          if (googleDrive && workflow && workflow.publish && workflow.parentId === nodeId) {
+            await startWatch(googleDrive);
+          } else {
+            await drive.channels.stop({
+              requestBody: {
+                id: channelId,
+                resourceId
+              },
+            });
+          }
+        }, expiresIn);
+      }
+    };
+
+    await startWatch(googleDrive);
+
+    return new NextResponse("Listening to changes...", { status: 200 });
+  } catch (error: any) {
+    console.log("Error while watching for Google Drive changes:", error?.message);
+    return new NextResponse("Oops! something went wrong, try again", {
+      status: 500,
+    });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { nodeId, userId } = reqSchema.parse(await req.json());
+
+    await ConnectToDB();
+    const dbUser = await User.findOne<Pick<UserType, "_id" | "currentWorkflowId">>(
+      { userId }, { _id: 1, currentWorkflowId: 1 }
+    );
+
+    if (!dbUser)
+      return NextResponse.json(
+        { message: "user is not authenticated" },
+        { status: 401 }
+      );
+
+    const googleDrive = await getGoogleDriveInstance(nodeId);
+    if (!googleDrive) {
+      return new NextResponse("No Google Drive trigger found", { status: 404 });
     }
 
-    await Workflow.findByIdAndUpdate(workflowId, {
-      $set: {
-        "googleDriveWatchTrigger.expiresAt": expiresAt,
-        "googleDriveWatchTrigger.channelId": _channelId,
-        "googleDriveWatchTrigger.resourceId": _resourceId,
-        "googleDriveWatchTrigger.resourceUri": watchedResourceUri,
-        "googleDriveWatchTrigger.pageToken": pageToken,
+    const ok = await checkAndRefreshToken(
+      googleDrive.accessToken,
+      googleDrive.refreshToken,
+      googleDrive.expiresAt,
+      googleDrive.nodeId
+    );
+
+    if (!ok) throw new Error("Reconnect your Google Drive account");
+
+    const drive = google.drive({
+      version: "v3",
+      auth: oauth2Client,
+    });
+
+    await drive.channels.stop({
+      requestBody: {
+        id: googleDrive.channelId,
+        resourceId: googleDrive.resourceId
       },
     });
 
-    revalidatePath(`/workflows/editor/${workflowId}`);
-
-    const message = result?.googleDriveWatchTrigger?.isListening
-      ? "Listening to changes..."
-      : "Listening stopped!";
-    return new NextResponse(message, { status: 200 });
+    return new NextResponse("Listening stopped!", { status: 200 });
   } catch (error: any) {
-    console.log(error?.message);
+    console.log("Error while stopping the Google Drive changes:", error?.message);
     return new NextResponse("Oops! something went wrong, try again", {
       status: 500,
     });
