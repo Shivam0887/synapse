@@ -10,15 +10,6 @@ import { ZodError, z } from "zod";
 const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GEMINI_API_KEY!);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-const chat = model.startChat({
-  history: [
-    {
-      role: "model",
-      parts: [{ text: modalPrompt }],
-    },
-  ],
-});
-
 const promptSchema = z.object({
   prompt: z.string().min(20, "Prompt should contain atleast 20 charaters."),
 });
@@ -40,7 +31,12 @@ export const POST = async (req: NextRequest) => {
       throw new Error("Bad request. Subscribe to Premium Plan");
     }
 
-    const result = await chat.sendMessage(prompt);
+    const result = await model.generateContent({
+      contents: [
+        { role: "user", parts: [{ text: prompt }] },
+        { role: "model", parts: [{ text: modalPrompt }] },
+      ],
+    });
     return NextResponse.json({ data: result.response.text() });
   } catch (error) {
     if (error instanceof ZodError) {
