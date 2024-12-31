@@ -1,3 +1,4 @@
+import { GoogleDriveType } from "@/models/google-drive.model";
 import { Node } from "@xyflow/react";
 import { Auth } from "googleapis";
 import { LucideIcon } from "lucide-react";
@@ -212,3 +213,20 @@ export type Credentials = {
   token_type?: string | null;
   id_token?: string | null;
 };
+
+export type GoogleDriveInstance = Pick<
+  GoogleDriveType,
+  | "changes"
+  | "fileId"
+  | "driveId"
+  | "includeRemoved"
+  | "restrictToMyDrive"
+  | "supportedAllDrives"
+  | "accessToken"
+  | "refreshToken"
+  | "expiresAt"
+  | "nodeId"
+  | "channelId"
+  | "resourceId"
+  | "pageToken"
+>;

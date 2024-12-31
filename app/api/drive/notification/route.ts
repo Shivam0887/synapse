@@ -8,9 +8,9 @@ import { absolutePathUrl, oauthRedirectUri } from "@/lib/utils";
 
 import { User, UserType } from "@/models/user.model";
 import { Workflow, WorkflowType } from "@/models/workflow.model";
-import { getGoogleDriveInstance } from "../watch/route";
 import { GoogleDrive } from "@/models/google-drive.model";
 import { sendMessage } from "@/actions/utils.actions";
+import { getGoogleDriveInstance } from "@/actions/google-drive.actions";
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_DRIVE_CLIENT_ID!,

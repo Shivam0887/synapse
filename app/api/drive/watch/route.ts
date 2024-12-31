@@ -9,25 +9,10 @@ import { Workflow, WorkflowType } from "@/models/workflow.model";
 import { mapper } from "@/lib/constants";
 
 import z from "zod";
-import { GoogleDrive, GoogleDriveType } from "@/models/google-drive.model";
+import { GoogleDrive } from "@/models/google-drive.model";
 import { absolutePathUrl, oauthRedirectUri } from "@/lib/utils";
-
-type GoogleDriveInstance = Pick<
-  GoogleDriveType,
-  | "changes"
-  | "fileId"
-  | "driveId"
-  | "includeRemoved"
-  | "restrictToMyDrive"
-  | "supportedAllDrives"
-  | "accessToken"
-  | "refreshToken"
-  | "expiresAt"
-  | "nodeId"
-  | "channelId"
-  | "resourceId"
-  | "pageToken"
->;
+import { getGoogleDriveInstance } from "@/actions/google-drive.actions";
+import { GoogleDriveInstance } from "@/lib/types";
 
 const reqSchema = z.object({
   nodeId: z.string({ message: "No nodeId provided" }),
@@ -88,30 +73,6 @@ const checkAndRefreshToken = async (
     console.log("Error while refreshing the Google Drive token", errorMessage);
     return false;
   }
-};
-
-export const getGoogleDriveInstance = async (nodeId: string) => {
-  await ConnectToDB();
-  return await GoogleDrive.findOne<GoogleDriveInstance>(
-    { nodeId },
-    {
-      changes: 1,
-      fileId: 1,
-      files: 1,
-      driveId: 1,
-      includeRemoved: 1,
-      restrictToMyDrive: 1,
-      supportedAllDrives: 1,
-      expiresAt: 1,
-      accessToken: 1,
-      refreshToken: 1,
-      nodeId: 1,
-      channelId: 1,
-      resourceId: 1,
-      pageToken: 1,
-      _id: 0,
-    }
-  );
 };
 
 export async function PATCH(req: NextRequest) {

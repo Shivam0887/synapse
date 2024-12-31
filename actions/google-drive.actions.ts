@@ -4,7 +4,7 @@ import axios from "axios";
 import { drive_v3, google } from "googleapis";
 
 import ConnectToDB from "@/lib/connectToDB";
-import { TActionResponse } from "@/lib/types";
+import { GoogleDriveInstance, TActionResponse } from "@/lib/types";
 
 import { auth } from "@clerk/nextjs/server";
 import { GoogleDrive } from "@/models/google-drive.model";
@@ -126,4 +126,28 @@ export const updateGoogleDriveSettings = async (
       error: "Oops! something went wrong, while updating Google Drive setting",
     };
   }
+};
+
+export const getGoogleDriveInstance = async (nodeId: string) => {
+  await ConnectToDB();
+  return await GoogleDrive.findOne<GoogleDriveInstance>(
+    { nodeId },
+    {
+      changes: 1,
+      fileId: 1,
+      files: 1,
+      driveId: 1,
+      includeRemoved: 1,
+      restrictToMyDrive: 1,
+      supportedAllDrives: 1,
+      expiresAt: 1,
+      accessToken: 1,
+      refreshToken: 1,
+      nodeId: 1,
+      channelId: 1,
+      resourceId: 1,
+      pageToken: 1,
+      _id: 0,
+    }
+  );
 };
